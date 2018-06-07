@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageId>SimpleCsvParser.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>tpayne</Authors>
+    <Company>ADDDevelopment</Company>
   </PropertyGroup>
 
 </Project>
