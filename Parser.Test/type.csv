@@ -1,0 +1,4 @@
+boolean,char,sbyte,byte,int16,uint16,int32,uint32,int64,uint64,single,double,decimal,datetime,string
+true,t,1,5,1,5,1,5,1,5,1,5.55,1.88,01/03/1994,This is a string for you
+false,"h",1,2,16,116,32,332,64,664,111,"34.86",176.88,9-12-2005,"Special String, for ""you"""
+,,,,,,,,,,,,,,

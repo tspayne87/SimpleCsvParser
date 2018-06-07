@@ -1,3 +1,5 @@
+using System;
+
 namespace Parser.Test
 {
     public class TestModel
@@ -9,7 +11,9 @@ namespace Parser.Test
         [CsvProperty("cost")]
         public int Cost { get; set; }
         [CsvProperty("id")]
-        public int Id { get; set; }
+        public Double Id { get; set; }
+        [CsvProperty("date")]
+        public DateTime Date { get; set; }
     }
 
     public enum TestType

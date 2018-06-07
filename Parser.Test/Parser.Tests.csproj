@@ -19,4 +19,7 @@
   <Target Name="CopyTestCSV" AfterTargets="build">
     <Copy SourceFiles="./test.csv" DestinationFolder="$(OutDir)" />
   </Target>
+  <Target Name="CopyTypeCSV" AfterTargets="build">
+    <Copy SourceFiles="./type.csv" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>
