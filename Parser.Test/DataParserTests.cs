@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Parser.Test
 {
     [TestClass]
-    public class ParserTests
+    public class DataParserTests
     {
         [TestMethod]
         public void TestRemoveEntries()
@@ -22,6 +22,51 @@ namespace Parser.Test
         public void TestStringParser()
         {
             using (var parser = new CsvParser())
+            {
+                var result = parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987").FirstOrDefault();
+
+                Assert.AreEqual(result.Name, "Claws");
+                Assert.AreEqual(result.Type, TestType.Attachment);
+                Assert.AreEqual(result.Cost, 10);
+                Assert.AreEqual(result.Id, 34.5);
+                Assert.AreEqual(result.Date, DateTime.Parse("03/27/1987"));
+            }
+        }
+
+        [TestMethod]
+        public void TestCustomDelimiterAndWrapper()
+        {
+            using (var parser = new CsvParser(new CsvParserOptions() { Delimiter = ';', Wrapper = '*' }))
+            {
+                var result = parser.Parse<TestModel>("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*").FirstOrDefault();
+
+                Assert.AreEqual(result.Name, "Claws");
+                Assert.AreEqual(result.Type, TestType.Spell);
+                Assert.AreEqual(result.Cost, 50);
+                Assert.AreEqual(result.Id, 50.55);
+                Assert.AreEqual(result.Date, DateTime.Parse("6-19-2012"));
+            }
+        }
+
+        [TestMethod]
+        public void TestNoHeaders()
+        {
+            using (var parser = new CsvParser(new CsvParserOptions() { ParseHeaders = false }))
+            {
+                var result = parser.Parse<SecondTestModel>("Claws,Effect,10,60.05,9-5-1029").FirstOrDefault();
+
+                Assert.AreEqual(result.Name, "Claws");
+                Assert.AreEqual(result.Type, TestType.Effect);
+                Assert.AreEqual(result.Cost, 10);
+                Assert.AreEqual(result.Id, 60.05);
+                Assert.AreEqual(result.Date, DateTime.Parse("9-5-1029"));
+            }
+        }
+
+        [TestMethod]
+        public void TestNoDefaults()
+        {
+            using (var parser = new CsvParser(new CsvParserOptions() { AllowDefaults = false }))
             {
                 var result = parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987").FirstOrDefault();
 

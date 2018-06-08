@@ -50,7 +50,7 @@ namespace Parser
                     if (data.Count != headers.Count) throw new MalformedException($"Line {lineNumber} has {data.Count} but should have {headers.Count}.");
                     rows.Add(data);
                 }
-                else if (_options.ParseHeaders)
+                else if (!_options.ParseHeaders)
                 {
                     var data = ProcessLine(line, lineNumber);
                     if (rows.Count > 0 && rows[rows.Count - 1].Count != data.Count) throw new MalformedException($"Line {lineNumber} has {data.Count} but should have {rows[rows.Count - 1].Count}.");
@@ -101,7 +101,9 @@ namespace Parser
                     var attribute = (CsvPropertyAttribute)x.GetCustomAttributes(true).FirstOrDefault(y => y is CsvPropertyAttribute);
                     if (attribute == null) return new KeyValuePair<int, PropertyInfo>(-1, x);
                     else if (string.IsNullOrEmpty(attribute.Header)) return new KeyValuePair<int, PropertyInfo>(attribute.ColIndex, x);
-                    else return new KeyValuePair<int, PropertyInfo>(headers.IndexOf(attribute.Header), x);
+                    else return headers == null ?
+                        new KeyValuePair<int, PropertyInfo>(-1, x)
+                        : new KeyValuePair<int, PropertyInfo>(headers.IndexOf(attribute.Header), x);
                 });
 
             var results = new List<TModel>();
@@ -114,8 +116,9 @@ namespace Parser
                     {
                         if (prop.Value.PropertyType.IsGenericType && prop.Value.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                         {
-                            if ((string.IsNullOrEmpty(row[prop.Key]) || row[prop.Key] == "null") && _options.AllowDefaults)
+                            if ((string.IsNullOrEmpty(row[prop.Key]) || row[prop.Key] == "null"))
                             {
+                                if (string.IsNullOrEmpty(row[prop.Key]) && !_options.AllowDefaults) throw new MalformedException($"Default value in line {rows.IndexOf(row) + 1 + (headers == null ? 0 : 1)} does not contain a value.");
                                 prop.Value.SetValue(item, null);
                             }
                             else
@@ -125,8 +128,9 @@ namespace Parser
                         }
                         else
                         {
-                            if (string.IsNullOrEmpty(row[prop.Key]) && _options.AllowDefaults)
+                            if (string.IsNullOrEmpty(row[prop.Key]))
                             {
+                                if (!_options.AllowDefaults) throw new MalformedException($"Default value in line {rows.IndexOf(row) + 1 + (headers == null ? 0 : 1)} does not contain a value.");
                                 prop.Value.SetValue(item, GetDefaultValue(prop.Value.PropertyType));
                             }
                             else
