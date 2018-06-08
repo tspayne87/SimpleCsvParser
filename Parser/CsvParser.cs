@@ -34,7 +34,7 @@ namespace Parser
         public List<TModel> Parse<TModel>(string csvString)
             where TModel : new()
         {
-            var list = csvString.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var list = csvString.Split(new string[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
             List<string> headers = null;
             var rows = new List<List<string>>();
             var lineNumber = 0;

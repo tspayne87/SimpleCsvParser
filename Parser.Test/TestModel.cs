@@ -37,4 +37,55 @@ namespace Parser.Test
         Spell,
         Structure
     }
+
+    public class ImportCSVContainer
+   {
+       [CsvProperty("container_id")]
+       public string ContainerId { get; set; }
+
+       [CsvProperty("site")]
+       public string Site { get; set; }
+
+       [CsvProperty("subject")]
+       public string Subject { get; set; }
+
+       [CsvProperty("when_collected")]
+       public string WhenCollected { get; set; }
+
+       [CsvProperty("when_shipped")]
+       public string WhenShipped { get; set; }
+
+       [CsvProperty("storage_container_id")]
+       public string StorageContainerId { get; set; }
+
+       [CsvProperty("row")]
+       public string Row { get; set; }
+
+       [CsvProperty("column")]
+       public string Column { get; set; }
+
+       [CsvProperty("sample_type")]
+       public string SampleType { get; set; }
+
+       [CsvProperty("volume")]
+       public string Volume { get; set; }
+
+       [CsvProperty("volume_units")]
+       public string VolumeUnits { get; set; }
+
+       [CsvProperty("concentration")]
+       public string Concentration { get; set; }
+
+       [CsvProperty("specific_concentration")]
+       public string SpecificConcentration { get; set; }
+
+       [CsvProperty("concentration_type")]
+       public string ConcentrationType { get; set; }
+
+       [CsvProperty("parent_container_id")]
+       public string ParentContainerId { get; set; }
+
+       [CsvProperty("when_extracted")]
+       public string WhenExtracted { get; set; }
+   }
 }

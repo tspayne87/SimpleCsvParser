@@ -34,4 +34,4 @@ msbuild.wrn
 .vs/
 nuget-commands.txt
 index.js
-Parser.Test/large.csv
+large.csv
