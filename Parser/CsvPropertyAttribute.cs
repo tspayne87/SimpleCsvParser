@@ -1,6 +1,6 @@
 using System;
 
-namespace Parser
+namespace SimpleCsvParser
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     public class CsvPropertyAttribute : Attribute

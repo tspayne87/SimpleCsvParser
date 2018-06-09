@@ -1,6 +1,6 @@
 using System;
 
-namespace Parser.Test
+namespace SimpleCsvParser.Test
 {
     public class TypeModel
     {

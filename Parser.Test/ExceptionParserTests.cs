@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Parser.Test
+namespace SimpleCsvParser.Test
 {
     [TestClass]
     public class ExceptionParserTests
@@ -9,30 +9,24 @@ namespace Parser.Test
         [ExpectedException(typeof(MalformedException))]
         public void TestNoDefaults()
         {
-            using (var parser = new CsvParser(new CsvParserOptions() { AllowDefaults = false, ParseHeaders = false }))
-            {
-                parser.Parse<SecondTestModel>("Claws,,10,\"34.5\",03/27/1987");
-            }
+            var parser = new CsvParser(new CsvParserOptions() { AllowDefaults = false, ParseHeaders = false });
+            parser.Parse<SecondTestModel>("Claws,,10,\"34.5\",03/27/1987");
         }
 
         [TestMethod]
         [ExpectedException(typeof(MalformedException))]
         public void TestEndString()
         {
-            using (var parser = new CsvParser())
-            {
-                parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5,03/27/1987");
-            }
+            var parser = new CsvParser();
+            parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5,03/27/1987");
         }
 
         [TestMethod]
         [ExpectedException(typeof(MalformedException))]
         public void TestNotEnoughtItems()
         {
-            using (var parser = new CsvParser())
-            {
-                parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5");
-            }
+            var parser = new CsvParser();
+            parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5");
         }
     }
 }
