@@ -18,10 +18,6 @@ namespace SimpleCsvParser
         /// If we want to parse the headers out of the csv file.
         /// </summary>
         public bool ParseHeaders { get; set; } = true;
-    }
-
-    public class CsvParserOptions : CsvStreamOptions
-    {
         /// <summary>
         /// If empty entries need to be removed from the list.
         /// </summary>

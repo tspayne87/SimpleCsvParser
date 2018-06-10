@@ -1,82 +1,70 @@
-﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 
 namespace SimpleCsvParser
 {
-    public class CsvParser
+    public static class CsvParser
     {
         /// <summary>
-        /// Special options needed to determine what should be done with the parser.
+        /// Method is meant to parse a csv string.
         /// </summary>
-        private readonly CsvParserOptions _options;
-
-        /// <summary>
-        /// Constructor that is meant to setup basic options for the parser.
-        /// </summary>
-        public CsvParser()
-            : this(new CsvParserOptions()) { }
-
-        /// <summary>
-        /// Constructor to deal with custom options.
-        /// </summary>
-        /// <param name="options">Options that should be used by the parser.</param>
-        public CsvParser(CsvParserOptions options)
+        /// <param name="csv">The csv string that needs to be parsed.</param>
+        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        /// <returns>The list of objects that the parser comes back at.</returns>
+        public static List<TModel> Parse<TModel>(string csv)
+            where TModel: class, new()
         {
-            _options = options;
-        }
-        
-        /// <summary>
-        /// Method is meant to parse a csv string into a list of objects.
-        /// </summary>
-        /// <param name="csvString">The csv string we need to parse.</param>
-        /// <typeparam name="TModel">The model we need to create for each of the rows in the csv string.</typeparam>
-        /// <returns>Will return a list of models that were asked for.</returns>
-        public List<TModel> Parse<TModel>(string csvString)
-            where TModel : class, new()
-        {
-            using (var file = new CsvStreamReader<TModel>(GenerateStream(csvString), _options))
+            using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv)))
             {
-                return ProcessReader(file);
+                return reader.ReadAll();
             }
         }
 
         /// <summary>
-        /// Method is meant to open and parse the file to create a list of objects.
+        /// Method is meant to parse a csv string.
         /// </summary>
-        /// <param name="path">The full path to the csv file.</param>
-        /// <typeparam name="TModel">The models that we need to generate from the csv file.</typeparam>
-        /// <returns>Will return a list of models that were asked for.</returns>
-        public List<TModel> ParseFile<TModel>(string path)
-            where TModel : class, new()
+        /// <param name="csv">The csv string that needs to be parsed.</param>
+        /// <param name="options">The options that should be sent off to the stream.</param>
+        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        /// <returns>The list of objects that the parser comes back at.</returns>
+        public static List<TModel> Parse<TModel>(string csv, CsvStreamOptions options)
+            where TModel: class, new()
         {
-            using (var file = new CsvStreamReader<TModel>(path, _options))
+            using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv), options))
             {
-                return ProcessReader(file);
+                return reader.ReadAll();
             }
         }
 
         /// <summary>
-        /// Method is meant to process the reader and return the list of models that were parsed by the reader.
+        /// Method is meant to deal with reading csv files from the system.
         /// </summary>
-        /// <param name="file">The File stream being processed.</param>
-        /// <typeparam name="TModel">The model that the file should be parsed to.</typeparam>
-        /// <returns>Will return a list of processed models.</returns>
-        private List<TModel> ProcessReader<TModel>(CsvStreamReader<TModel> file)
-            where TModel : class, new()
+        /// <param name="path">The file path to the csv file that needs to be parsed.</param>
+        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        /// <returns>The list of objects that the parser comes back at.</returns>
+        public static List<TModel> ParseFile<TModel>(string path)
+            where TModel: class, new()
         {
-            if (_options.ParseHeaders) file.ReadHeader();
-            TModel item;
-            bool isEmpty;
-            var results = new List<TModel>();
-            while ((item = file.ReadRow(out isEmpty)) != null)
+            using (var reader = new CsvStreamReader<TModel>(path))
             {
-                if (!_options.RemoveEmptyEntries || !isEmpty)
-                    results.Add(item);
+                return reader.ReadAll();
             }
-            return results;
+        }
+
+        /// <summary>
+        /// Method is meant to deal with reading csv files from the system.
+        /// </summary>
+        /// <param name="path">The file path to the csv file that needs to be parsed.</param>
+        /// <param name="options">The options that should be sent off to the stream.</param>
+        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        /// <returns>The list of objects that the parser comes back at.</returns>
+        public static List<TModel> ParseFile<TModel>(string path, CsvStreamOptions options)
+            where TModel: class, new()
+        {
+            using (var reader = new CsvStreamReader<TModel>(path, options))
+            {
+                return reader.ReadAll();
+            }
         }
 
         /// <summary>
@@ -84,7 +72,7 @@ namespace SimpleCsvParser
         /// </summary>
         /// <param name="s">The string that should be transformed into a stream.</param>
         /// <returns>Will return a stream that can be used in the csv stream reader.</returns>
-        private Stream GenerateStream(string s)
+        private static Stream GenerateStream(string s)
         {
             var stream = new MemoryStream();
             var writer = new StreamWriter(stream);

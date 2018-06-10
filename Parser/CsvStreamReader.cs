@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SimpleCsvParser
 {
-    public class CsvStreamReader<TModel> : StreamReader
+    public class CsvStreamReader<TModel> : IDisposable
         where TModel: class, new()
     {
         /// <summary>
@@ -29,227 +29,138 @@ namespace SimpleCsvParser
         /// Internal use of the previous count to make sure the csv file is formatted correctly.
         /// </summary>
         private int _previousCount = -1;
+        /// <summary>
+        /// The reader we will be getting data from.
+        /// </summary>
+        private StreamReader _reader;
+        /// <summary>
+        /// The buffered stream that we need to dispose
+        /// </summary>
+
+        private BufferedStream _buffered;
+        /// <summary>
+        /// The stream that we need to dispose.
+        /// </summary>
+        private Stream _stream;
 
         #region Constructors
-        #region Constructors Without options
+        /// <summary>
+        /// Constructor that will deal with streams.
+        /// </summary>
+        /// <param name="stream">The stream the csv data exists in.</param>
         public CsvStreamReader(Stream stream)
-            : base(stream)
         {
             _options = new CsvStreamOptions();
             _line = new CsvLineParser(_options);
+            _stream = stream;
+            _buffered = new BufferedStream(stream);
+            _reader = new StreamReader(_buffered);
         }
 
+        /// <summary>
+        /// Constructor that will deal with files and convert them into a stream.
+        /// </summary>
+        /// <param name="path">The file path that we need to create a stream from.</param>
         public CsvStreamReader(string path)
-            : base(path)
         {
             _options = new CsvStreamOptions();
             _line = new CsvLineParser(_options);
+            _stream = File.Open(path, FileMode.Open);
+            _buffered = new BufferedStream(_stream);
+            _reader = new StreamReader(_buffered);
         }
 
-        public CsvStreamReader(Stream stream, bool detectEncodingFromByteOrderMarks)
-            : base(stream, detectEncodingFromByteOrderMarks)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding)
-            : base(stream, encoding)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, bool detectEncodingFromByteOrderMarks)
-            : base(path, detectEncodingFromByteOrderMarks)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding)
-            : base(path, encoding)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding, bool detectEncodingFromByteOrderMarks)
-            : base(path, encoding, detectEncodingFromByteOrderMarks)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks, bufferSize)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize)
-            : base(path, encoding, detectEncodingFromByteOrderMarks, bufferSize)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize, bool leaveOpen)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks, bufferSize, leaveOpen)
-        {
-            _options = new CsvStreamOptions();
-            _line = new CsvLineParser(_options);
-        }
-        #endregion
-        #region Constructors With options
+        /// <summary>
+        /// Constructor that will deal with streams.
+        /// </summary>
+        /// <param name="stream">The stream the csv data exists in.</param>
+        /// <param name="options">The stream options we need to use for parsing.</param>
         public CsvStreamReader(Stream stream, CsvStreamOptions options)
-            : base(stream)
         {
             _options = options;
             _line = new CsvLineParser(_options);
+            _stream = stream;
+            _buffered = new BufferedStream(stream);
+            _reader = new StreamReader(_buffered);
         }
 
+        /// <summary>
+        /// Constructor that will deal with files and convert them into a stream.
+        /// </summary>
+        /// <param name="path">The file path that we need to create a stream from.</param>
+        /// <param name="options">The stream options we need to use for parsing.</param>
         public CsvStreamReader(string path, CsvStreamOptions options)
-            : base(path)
         {
             _options = options;
             _line = new CsvLineParser(_options);
+            _stream = File.Open(path, FileMode.Open);
+            _buffered = new BufferedStream(_stream);
+            _reader = new StreamReader(_buffered);
         }
-
-        public CsvStreamReader(Stream stream, bool detectEncodingFromByteOrderMarks, CsvStreamOptions options)
-            : base(stream, detectEncodingFromByteOrderMarks)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, CsvStreamOptions options)
-            : base(stream, encoding)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, bool detectEncodingFromByteOrderMarks, CsvStreamOptions options)
-            : base(path, detectEncodingFromByteOrderMarks)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding, CsvStreamOptions options)
-            : base(path, encoding)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, CsvStreamOptions options)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding, bool detectEncodingFromByteOrderMarks, CsvStreamOptions options)
-            : base(path, encoding, detectEncodingFromByteOrderMarks)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize, CsvStreamOptions options)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks, bufferSize)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(string path, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize, CsvStreamOptions options)
-            : base(path, encoding, detectEncodingFromByteOrderMarks, bufferSize)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-
-        public CsvStreamReader(Stream stream, Encoding encoding, bool detectEncodingFromByteOrderMarks, int bufferSize, bool leaveOpen, CsvStreamOptions options)
-            : base(stream, encoding, detectEncodingFromByteOrderMarks, bufferSize, leaveOpen)
-        {
-            _options = options;
-            _line = new CsvLineParser(_options);
-        }
-        #endregion
         #endregion
 
         /// <summary>
-        /// Method is meant to read the headers from the csv file and generate the line converter based on that. This method
-        /// can only be used as the first method called after creation of the stream otherwise it will throw errors.
+        /// Read all of the models from the stream.
         /// </summary>
-        /// <exception cref="System.ArgumentException">Is thrown if not the first method called</exception>
-        /// <exception cref="SimpleCsvParser.MalformedException">Is thrown if there is a malformity in the string being parsed.</exception>
-        /// <returns>Will return a list of headers for outside processing.</returns>
-        public List<string> ReadHeader()
+        /// <returns>Will return a list of objects that are parsed from the stream.</returns>
+        public List<TModel> ReadAll()
         {
-            if (_previousCount != -1) throw new ArgumentException("Headers have already been processed cannot be called twice");
-            var line = ReadNext();
-            if (line == null) return null;
-            var headers = _line.Process(line, _lineNumber);
-            _previousCount = headers.Count;
-            _converter = new CsvLineConverter<TModel>(_options, headers);
-            return headers;
-        }
-        /// <summary>
-        /// Method is meant to read a row from the stream and convert the string into an object.
-        /// </summary>
-        /// <exception cref="SimpleCsvParser.MalformedException">Is thrown if there is a malformity in the string being parsed.</exception>
-        /// <returns>Will return the converted object from the current row in the stream.</returns>
-        public TModel ReadRow()
-        {
-            if (_converter == null) _converter = new CsvLineConverter<TModel>(_options, null);
-            var line = ReadNext();
-            if (line == null) return null;
-            var parsed = _line.Process(line, _lineNumber);
-            if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {_lineNumber} has {parsed.Count} but should have {_previousCount}.");
-            _previousCount = parsed.Count;
-            return _converter.Process(parsed, _lineNumber);
+            var items = new List<TModel>();
+            Read(x => items.Add(x));
+            return items;
         }
 
         /// <summary>
-        /// Method is meant to read a row from the stream and convert the string into an object.
+        /// Will read through each item and call the action for each item
         /// </summary>
-        /// <param name="isEmpty">Determines if all the fields are empty in the row pulled from the stream.</param>
-        /// <exception cref="SimpleCsvParser.MalformedException">Is thrown if there is a malformity in the string being parsed.</exception>
-        /// <returns>Will return the converted object from the current row in the stream.</returns>
-        public TModel ReadRow(out bool isEmpty)
+        /// <param name="eachItem">The callback that should be used for each item.</param>
+        public void Read(Action<TModel> eachItem)
         {
-            if (_converter == null) _converter = new CsvLineConverter<TModel>(_options, null);
-            var line = ReadNext();
-            isEmpty = false;
-            if (line == null) return null;
-            var parsed = _line.Process(line, _lineNumber);
-            if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {_lineNumber} has {parsed.Count} but should have {_previousCount}.");
-            isEmpty = parsed.Where(x => string.IsNullOrEmpty(x)).Count() == _previousCount;
-            _previousCount = parsed.Count;
-            return _converter.Process(parsed, _lineNumber);
+            string line;
+            int lineNumber = 0;
+            while ((line = _reader.ReadLine()) != null)
+            {
+                lineNumber++;
+                if (_previousCount == -1 && _options.ParseHeaders)
+                {
+                    var headers = _line.Process(line, lineNumber);
+                    _previousCount = headers.Count;
+                    _converter = new CsvLineConverter<TModel>(_options, headers);
+                }
+                else
+                {
+                    if (_converter == null) _converter = new CsvLineConverter<TModel>(_options, null);
+                    var parsed = _line.Process(line, lineNumber);
+                    if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {_lineNumber} has {parsed.Count} but should have {_previousCount}.");
+                    _previousCount = parsed.Count;
+
+                    if (!_options.RemoveEmptyEntries || parsed.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
+                        eachItem(_converter.Process(parsed, lineNumber));
+                }
+            }
         }
 
-        /// <summary>
-        /// Helper method that will read the next line and increment the line number we are at.
-        /// </summary>
-        /// <returns>Returns the string that we read from the stream.</returns>
-        private string ReadNext()
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
         {
-            var line = ReadLine();
-            _lineNumber++;
-            return line;
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _stream.Dispose();
+                    _buffered.Dispose();
+                    _reader.Dispose();
+                }
+                disposedValue = true;
+            }
         }
+        
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
     }
 }

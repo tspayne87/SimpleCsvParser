@@ -9,24 +9,30 @@ namespace SimpleCsvParser.Test
         [ExpectedException(typeof(MalformedException))]
         public void TestNoDefaults()
         {
-            var parser = new CsvParser(new CsvParserOptions() { AllowDefaults = false, ParseHeaders = false });
-            parser.Parse<SecondTestModel>("Claws,,10,\"34.5\",03/27/1987");
+            using (var reader = new CsvStreamReader<SecondTestModel>(StreamHelper.GenerateStream("Claws,,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, ParseHeaders = false }))
+            {
+                reader.ReadAll();
+            }
         }
 
         [TestMethod]
         [ExpectedException(typeof(MalformedException))]
         public void TestEndString()
         {
-            var parser = new CsvParser();
-            parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5,03/27/1987");
+            using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5,03/27/1987")))
+            {
+                reader.ReadAll();
+            }
         }
 
         [TestMethod]
         [ExpectedException(typeof(MalformedException))]
         public void TestNotEnoughtItems()
         {
-            var parser = new CsvParser();
-            parser.Parse<TestModel>("name,type,cost,id,date\nClaws,Attachment,10,\"34.5");
+            using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5")))
+            {
+                reader.ReadAll();
+            }
         }
     }
 }
