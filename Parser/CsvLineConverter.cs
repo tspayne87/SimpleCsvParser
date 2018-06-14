@@ -47,12 +47,12 @@ namespace SimpleCsvParser
         /// <param name="rows">The data rows we need to process from the create the objects.</param>
         /// <typeparam name="TModel">The models we will be generating.</typeparam>
         /// <returns>A list of models that was requested.</returns>
-        public TModel Process(List<string> row, int lineNumber)
+        public TModel Process(List<string> row, long lineNumber)
         {
             var result = new TModel();
             foreach (var prop in _props)
             {
-                if (prop.Key > -1)
+                if (prop.Key > -1 && prop.Key < row.Count)
                 {
                     if (prop.Value.PropertyType.IsGenericType && prop.Value.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                     {

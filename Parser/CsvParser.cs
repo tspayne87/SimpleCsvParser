@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace SimpleCsvParser
 {
@@ -16,7 +17,7 @@ namespace SimpleCsvParser
         {
             using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv)))
             {
-                return reader.ReadAll();
+                return reader.AsEnumerable().ToList();
             }
         }
 
@@ -32,7 +33,7 @@ namespace SimpleCsvParser
         {
             using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv), options))
             {
-                return reader.ReadAll();
+                return reader.AsEnumerable().ToList();
             }
         }
 
@@ -47,7 +48,7 @@ namespace SimpleCsvParser
         {
             using (var reader = new CsvStreamReader<TModel>(path))
             {
-                return reader.ReadAll();
+                return reader.AsEnumerable().ToList();
             }
         }
 
@@ -63,7 +64,7 @@ namespace SimpleCsvParser
         {
             using (var reader = new CsvStreamReader<TModel>(path, options))
             {
-                return reader.ReadAll();
+                return reader.AsEnumerable().ToList();
             }
         }
 

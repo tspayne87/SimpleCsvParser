@@ -10,8 +10,8 @@ namespace SimpleCsvParser.Test
         [TestMethod]
         public void TestRemoveEntries()
         {
-            var entries = CsvParser.ParseFile<TestModel>("test.csv", new CsvStreamOptions() { RemoveEmptyEntries = true });
-            Assert.AreEqual(entries.Count, 20);
+            var entries = CsvParser.ParseFile<TestModel>("test.csv", new CsvStreamOptions() { RemoveEmptyEntries = true }).ToList();
+            Assert.AreEqual(entries.Count(), 20);
         }
 
         [TestMethod]
@@ -19,7 +19,7 @@ namespace SimpleCsvParser.Test
         {
             using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,\"34.5\",03/27/1987")))
             {
-                var result = reader.ReadAll().FirstOrDefault();
+                var result = reader.AsEnumerable().FirstOrDefault();
 
                 Assert.AreEqual(result.Name, "Claws");
                 Assert.AreEqual(result.Type, TestType.Attachment);
@@ -30,12 +30,25 @@ namespace SimpleCsvParser.Test
         }
 
         [TestMethod]
+        public void TestTabDelimited()
+        {
+            var result = CsvParser.Parse<TestModel>("name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987", new CsvStreamOptions() { Delimiter = '\t' }).FirstOrDefault();
+
+            Assert.AreEqual(result.Name, "Claws");
+            Assert.AreEqual(result.Type, TestType.Attachment);
+            Assert.AreEqual(result.Cost, 10);
+            Assert.AreEqual(result.Id, 34.5);
+            Assert.AreEqual(result.Date, DateTime.Parse("03/27/1987"));
+
+        }
+
+        [TestMethod]
         public void TestCustomDelimiterAndWrapper()
         {
             var stream = StreamHelper.GenerateStream("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*");
             using (var reader = new CsvStreamReader<TestModel>(stream, new CsvStreamOptions() { Delimiter = ';', Wrapper = '*' }))
             {
-                var result = reader.ReadAll().FirstOrDefault();
+                var result = reader.AsEnumerable().FirstOrDefault();
 
                 Assert.AreEqual(result.Name, "Claws");
                 Assert.AreEqual(result.Type, TestType.Spell);
@@ -50,7 +63,7 @@ namespace SimpleCsvParser.Test
         {
             using (var reader = new CsvStreamReader<SecondTestModel>(StreamHelper.GenerateStream("Claws,Effect,10,60.05,9-5-1029"), new CsvStreamOptions() { ParseHeaders = false }))
             {
-                var result = reader.ReadAll().FirstOrDefault();
+                var result = reader.AsEnumerable().FirstOrDefault();
 
                 Assert.AreEqual(result.Name, "Claws");
                 Assert.AreEqual(result.Type, TestType.Effect);
@@ -65,7 +78,7 @@ namespace SimpleCsvParser.Test
         {
             using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false }))
             {
-                var result = reader.ReadAll().FirstOrDefault();
+                var result = reader.AsEnumerable().FirstOrDefault();
 
                 Assert.AreEqual(result.Name, "Claws");
                 Assert.AreEqual(result.Type, TestType.Attachment);
@@ -80,7 +93,7 @@ namespace SimpleCsvParser.Test
         {
             using (var reader = new CsvStreamReader<TypeModel>("type.csv"))
             {
-                var results = reader.ReadAll();
+                var results = reader.AsEnumerable().ToList();
 
                 Assert.AreEqual(results[0].Boolean, true);
                 Assert.AreEqual(results[1].Boolean, false);

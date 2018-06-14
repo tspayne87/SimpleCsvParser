@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace SimpleCsvParser
 {
@@ -22,10 +24,6 @@ namespace SimpleCsvParser
         /// </summary>
         private CsvLineConverter<TModel> _converter;
         /// <summary>
-        /// Internal use of the line number.
-        /// </summary>
-        private int _lineNumber = 0;
-        /// <summary>
         /// Internal use of the previous count to make sure the csv file is formatted correctly.
         /// </summary>
         private int _previousCount = -1;
@@ -33,11 +31,6 @@ namespace SimpleCsvParser
         /// The reader we will be getting data from.
         /// </summary>
         private StreamReader _reader;
-        /// <summary>
-        /// The buffered stream that we need to dispose
-        /// </summary>
-
-        private BufferedStream _buffered;
         /// <summary>
         /// The stream that we need to dispose.
         /// </summary>
@@ -53,8 +46,7 @@ namespace SimpleCsvParser
             _options = new CsvStreamOptions();
             _line = new CsvLineParser(_options);
             _stream = stream;
-            _buffered = new BufferedStream(stream);
-            _reader = new StreamReader(_buffered);
+            _reader = new StreamReader(_stream);
         }
 
         /// <summary>
@@ -65,9 +57,8 @@ namespace SimpleCsvParser
         {
             _options = new CsvStreamOptions();
             _line = new CsvLineParser(_options);
-            _stream = File.Open(path, FileMode.Open);
-            _buffered = new BufferedStream(_stream);
-            _reader = new StreamReader(_buffered);
+            _stream = File.Open(path, FileMode.Open, FileAccess.Read);
+            _reader = new StreamReader(_stream);
         }
 
         /// <summary>
@@ -80,8 +71,7 @@ namespace SimpleCsvParser
             _options = options;
             _line = new CsvLineParser(_options);
             _stream = stream;
-            _buffered = new BufferedStream(stream);
-            _reader = new StreamReader(_buffered);
+            _reader = new StreamReader(_stream);
         }
 
         /// <summary>
@@ -93,56 +83,158 @@ namespace SimpleCsvParser
         {
             _options = options;
             _line = new CsvLineParser(_options);
-            _stream = File.Open(path, FileMode.Open);
-            _buffered = new BufferedStream(_stream);
-            _reader = new StreamReader(_buffered);
+            _stream = File.Open(path, FileMode.Open, FileAccess.Read);
+            _reader = new StreamReader(_stream);
         }
         #endregion
 
         /// <summary>
-        /// Read all of the models from the stream.
+        /// Converts the stream into a enumerable list of models.
         /// </summary>
-        /// <returns>Will return a list of objects that are parsed from the stream.</returns>
-        public List<TModel> ReadAll()
+        /// <param name="eachItem">The callback that should be used for each item.</param>
+        public IEnumerable<TModel> AsEnumerable()
         {
-            var items = new List<TModel>();
-            Read(x => items.Add(x));
-            return items;
+            ProcessConverter();
+            return InternalRead()
+                .Select((x, index) => ReadLine(x, index + 1))
+                .Where(x => x != null);
         }
 
         /// <summary>
-        /// Will read through each item and call the action for each item
+        /// Method is meant to be used with large files, so that the user can process each row one at a time instead of creating
+        /// a list.
         /// </summary>
-        /// <param name="eachItem">The callback that should be used for each item.</param>
-        public void Read(Action<TModel> eachItem)
+        /// <param name="eachItem">The action that will be called back foreach item.</param>
+        public void ForEach(Action<TModel> eachItem)
         {
-            string line;
-            int lineNumber = 0;
-            while ((line = _reader.ReadLine()) != null)
-            {
-                lineNumber++;
-                if (_previousCount == -1 && _options.ParseHeaders)
+            ProcessConverter();
+            Parallel.ForEach(InternalRead(), (x, state, index) => {
+                eachItem(ReadLine(x, (int)index + 1));
+            });
+        }
+
+        /// <summary>
+        /// Helper method that will build out the converter before the process starts creating the enumerable list.
+        /// </summary>
+        private void ProcessConverter()
+        {
+            if (_options.ParseHeaders)
+            { // If we need to parse the first line of headers in the stream/file.
+                var line = _reader.ReadLine();
+                if (!string.IsNullOrEmpty(line))
                 {
-                    var headers = _line.Process(line, lineNumber);
+                    var headers = _line.Process(line.ToCharArray(), 0);
                     _previousCount = headers.Count;
                     _converter = new CsvLineConverter<TModel>(_options, headers);
                 }
+            }
+            if (_converter == null) _converter = new CsvLineConverter<TModel>(_options, null);
+        }
+
+        /// <summary>
+        /// Helper method that will convert the streams into a list of char characters based on each of the rows.
+        /// </summary>
+        /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
+        private IEnumerable<char[]> InternalRead()
+        {
+            char[] buffer = new char[256 * 1024]; // Create a buffer to store the characters loaded from the stream.
+            char[] previous = new char[(256 * 1024) + 1]; // Create a previous buffer to deal with saving snippets between reads.
+            int previousIndex = 0; // The previous index to read to when getting the previous characters.
+            while (true)
+            {
+                var blockIndex = _reader.ReadBlock(buffer, 0, buffer.Length);
+                if (_reader.Peek() == -1)
+                {
+                    foreach(var line in Split(previous.Take(previousIndex).Concat(buffer.Take(blockIndex)).ToArray()))
+                    { // If we are dealing with a \r at the end of the char array we need to trim it off.
+                        yield return line[line.Length - 1] == '\r' ? line.Take(line.Length - 1).ToArray() : line;
+                    }
+                    break;
+                }
                 else
                 {
-                    if (_converter == null) _converter = new CsvLineConverter<TModel>(_options, null);
-                    var parsed = _line.Process(line, lineNumber);
-                    if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {_lineNumber} has {parsed.Count} but should have {_previousCount}.");
-                    _previousCount = parsed.Count;
+                    // Get the current lines from the read buffer
+                    var lines = Split(previous.Take(previousIndex).Concat(buffer).ToArray()).ToList();
 
-                    if (!_options.RemoveEmptyEntries || parsed.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
-                        eachItem(_converter.Process(parsed, lineNumber));
+                    // Read all the lines but the last one because it might not be the end of that 
+                    var lastIndex = lines.Count - 1;
+                    for (var i = 0; i < lastIndex; ++i) yield return lines[i];
+
+                    // Save the previous line for use in the next buffer
+                    if (lines[lastIndex].Length > previous.Length) throw new ArgumentOutOfRangeException("Line exceeded maxium limit for row");
+                    for (var i = 0; i < lines[lastIndex].Length; ++i) previous[i] = lines[lastIndex][i];
+                    previousIndex = lines[lastIndex].Length;
                 }
             }
+        }
+
+        /// <summary>
+        /// Helper method is meant to split char arrays up into a list of new line arrays.
+        /// </summary>
+        /// <param name="current">The current array we are splitting up on newline characters.</param>
+        /// <returns>Will return an enumerable for each of the rows in the char array.</returns>
+        private IEnumerable<char[]> Split(char[] current)
+        {
+            char[] buffer = new char[current.Length];
+            int bufferIndex = 0;
+            for (var i = 0; i < current.Length; ++i)
+            {
+                if (current.Length > (i + 1) && current[i] == '\r' && current[i + 1] == '\n')
+                { // If this is a windows style new line we should progress the iterator return a char array and update the buffer index.
+                    i++;
+                    yield return buffer.Take(bufferIndex).ToArray();
+                    bufferIndex = 0;
+                }
+                else if (current[i] == '\r')
+                { // Deal with carrage returns.
+                    if (i == current.Length - 1)
+                    { // If the \r is at the end of the line we need to save this just in case the \n is in the next read
+                        buffer[bufferIndex++] = current[i];
+                    }
+                    else
+                    {
+                        yield return buffer.Take(bufferIndex).ToArray();
+                        bufferIndex = 0;
+                    }
+                }
+                else if (current[i] == '\n')
+                { // Deal with just new lines.
+                    yield return buffer.Take(bufferIndex).ToArray();
+                    bufferIndex = 0;
+                }
+                else
+                {
+                    buffer[bufferIndex++] = current[i];
+                }
+            }
+
+            // Return the final result
+            yield return buffer.Take(bufferIndex).ToArray();
+        }
+
+        /// <summary>
+        /// Helper method is meant to read a char array and convert it to the desired object.
+        /// </summary>
+        /// <param name="line">The char array we need to parse.</param>
+        /// <param name="lineNumber">The current line number this line is in the file or string.</param>
+        /// <returns>Will return the desired object or null if nothing needs to be processed.</returns>
+        private TModel ReadLine(char[] line, int lineNumber)
+        {
+            var parsed = _line.Process(line, lineNumber);
+            if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {lineNumber} has {parsed.Count} but should have {_previousCount}.");
+            _previousCount = parsed.Count;
+            if (!_options.RemoveEmptyEntries || parsed.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
+                return _converter.Process(parsed, lineNumber);
+            return null;
         }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
+        /// <summary>
+        /// Method is meant to dispose this object after use.
+        /// </summary>
+        /// <param name="disposing">If we are needing to dispose the object.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -150,13 +242,15 @@ namespace SimpleCsvParser
                 if (disposing)
                 {
                     _stream.Dispose();
-                    _buffered.Dispose();
                     _reader.Dispose();
                 }
                 disposedValue = true;
             }
         }
-        
+
+        /// <summary>
+        /// Method is meant to dispose of this object.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);

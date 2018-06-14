@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace SimpleCsvParser
@@ -24,8 +25,9 @@ namespace SimpleCsvParser
         /// <param name="line">The line we are processing.</param>
         /// <param name="lineNumber">The current line number in the csv file we are processing on, this is mainly used for exceptions.</param>
         /// <returns>Will return a list of string gathered from the csv row.</returns>
-        public List<string> Process(string line, int lineNumber)
+        public List<string> Process(char[] line, long lineNumber)
         {
+            if (Array.IndexOf(line, _options.Delimiter) == -1) throw new MalformedException($"No Delimiter found on line {lineNumber}, is the correct delimiter used in the options?");
             var inWrapper = false;
 
             var data = string.Empty;
