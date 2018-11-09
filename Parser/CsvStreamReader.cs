@@ -147,6 +147,7 @@ namespace SimpleCsvParser
                 {
                     foreach(var line in Split(previous.Take(previousIndex).Concat(buffer.Take(blockIndex)).ToArray()))
                     { // If we are dealing with a \r at the end of the char array we need to trim it off.
+                        if (line.Length == 0) continue;
                         yield return line[line.Length - 1] == '\r' ? line.Take(line.Length - 1).ToArray() : line;
                     }
                     break;
