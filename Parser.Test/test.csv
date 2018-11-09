@@ -1,17 +1,23 @@
 name,type,cost,id,final
 Claws,Attachment,10,"1",
+
 Double Edge Sword,Attachment,10,2,
 Gauntlet,Attachment,10,3,"Final, Test"
+
 Leather Armour,Attachment,15,4,
 Wings,Attachment,15,5,
+
 Control,Effect,10,6,
 ,,,,
 Ensnare,Effect,15,7,
 Healing Spring,Effect,15,8,
+
 Katee's Inferno,Effect,20,9,
 Tornado,Effect,25,10,
+
 Destroy Attachment,Spell,10,11,
 Fireball,Spell,5,12,
+
 ,,,,
 Heal,Spell,5,13,
 Lightning Bolt,Spell,10,14,
@@ -21,5 +27,7 @@ Blacksmith,Structure,15,17,
 """Magma"" Fissure",Structure,15,18,
 "Medical,Healing Camp",Structure,15,19,
 Spire,Structure,5,20,
+
+
 ,,,,
 ,,,,
