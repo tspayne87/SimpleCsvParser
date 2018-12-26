@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace SimpleCsvParser
 {
@@ -30,15 +31,15 @@ namespace SimpleCsvParser
             if (Array.IndexOf(line, _options.Delimiter) == -1) throw new MalformedException($"No Delimiter found on line {lineNumber}, is the correct delimiter used in the options?");
             var inWrapper = false;
 
-            var data = string.Empty;
+            var buffer = new StringBuilder();
             var result = new List<string>();
             for (var i = 0; i < line.Length; ++i)
             {
                 if (i == 0)
                 { // Deal with edge case 1: We are at the start of the string
                     if (line[i] == _options.Wrapper) inWrapper = true;
-                    else if (line[i] == _options.Delimiter) result.Add(data);
-                    else data += line[i];
+                    else if (line[i] == _options.Delimiter) result.Add(buffer.ToString());
+                    else buffer.Append(line[i]);
                 }
                 else if (i + 1 == line.Length)
                 { // Deal with edge case 2: We are at the end of the string.
@@ -46,14 +47,14 @@ namespace SimpleCsvParser
                     {
                         throw new MalformedException($"Line {lineNumber} does not end its data wrapper.");
                     }
-                    else if(line[i] == _options.Delimiter)
+                    else if (line[i] == _options.Delimiter)
                     {
-                        result.Add(data);
+                        result.Add(buffer.ToString());
                         result.Add(string.Empty);
                     }
                     else
                     {
-                        result.Add(inWrapper ? data : data + line[i]);
+                        result.Add(inWrapper ? buffer.ToString() : buffer.ToString() + line[i]);
                     }
                 }
                 else
@@ -62,20 +63,20 @@ namespace SimpleCsvParser
                     { // If we are in a wrapper we should process it as such
                         if (line[i] == _options.Wrapper && line[i + 1] == _options.Wrapper)
                         {
-                            data += _options.Wrapper;
+                            buffer.Append(_options.Wrapper);
                             i++;
                         }
                         else if (line[i] == _options.Wrapper && line[i + 1] == _options.Delimiter)
                         {
-                            result.Add(data);
-                            data = string.Empty;
+                            result.Add(buffer.ToString());
+                            buffer.Clear();
                             inWrapper = false;
                             i++;
-                            if (i + 1 == line.Length) result.Add(data);
+                            if (i + 1 == line.Length) result.Add(string.Empty);
                         }
                         else
                         {
-                            data += line[i];
+                            buffer.Append(line[i]);
                         }
                     }
                     else if (line[i] == _options.Wrapper)
@@ -84,12 +85,12 @@ namespace SimpleCsvParser
                     }
                     else if (line[i] == _options.Delimiter)
                     {
-                        result.Add(data);
-                        data = string.Empty;
+                        result.Add(buffer.ToString());
+                        buffer.Clear();
                     }
                     else
                     {
-                        data += line[i];
+                        buffer.Append(line[i]);
                     }
                 }
             }

@@ -15,10 +15,7 @@ namespace SimpleCsvParser
         public static List<TModel> Parse<TModel>(string csv)
             where TModel: class, new()
         {
-            using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv)))
-            {
-                return reader.AsEnumerable().ToList();
-            }
+            return Parse<TModel>(csv, new CsvStreamOptions());
         }
 
         /// <summary>
@@ -46,10 +43,7 @@ namespace SimpleCsvParser
         public static List<TModel> ParseFile<TModel>(string path)
             where TModel: class, new()
         {
-            using (var reader = new CsvStreamReader<TModel>(path))
-            {
-                return reader.AsEnumerable().ToList();
-            }
+            return ParseFile<TModel>(path, new CsvStreamOptions());
         }
 
         /// <summary>
@@ -69,6 +63,80 @@ namespace SimpleCsvParser
         }
 
         /// <summary>
+        /// Method is meant to parse out the models to a string for use somewhere else.
+        /// </summary>
+        /// <param name="models">The models that need to be parsed into a string.</param>
+        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
+        /// <returns>Will return a parsed string of the objects being passed in.</returns>
+        public static string Stringify<TModel>(params TModel[] models)
+            where TModel: class, new()
+        {
+            return Stringify(models.ToList(), new CsvStreamOptions());
+        }
+
+        /// <summary>
+        /// Method is meant to parse out the model to a string for use somewhere else.
+        /// </summary>
+        /// <param name="model">The model that need to be parsed into a string.</param>
+        /// <param name="options">The options that should be sent off to the stream.</param>
+        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
+        /// <returns>Will return a parsed string of the objects being passed in.</returns>
+        public static string Stringify<TModel>(TModel model, CsvStreamOptions options)
+            where TModel: class, new()
+        {
+            return Stringify(new List<TModel>() { model }, options);
+        }
+
+        /// <summary>
+        /// Method is meant to parse out the models to a string for use somewhere else.
+        /// </summary>
+        /// <param name="models">The models that need to be parsed into a string.</param>
+        /// <param name="options">The options that should be sent off to the stream.</param>
+        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
+        /// <returns>Will return a parsed string of the objects being passed in.</returns>
+        public static string Stringify<TModel>(IEnumerable<TModel> models, CsvStreamOptions options)
+            where TModel: class, new()
+        {
+            var stream = GenerateStream(string.Empty);
+            using (var writer = new CsvStreamWriter<TModel>(stream, options))
+            {
+                if (options.WriteHeaders) writer.WriteHeader();
+                foreach(var model in models) writer.WriteLine(model);
+                writer.Flush();
+                return ReadStream(stream);
+            }
+        }
+
+        /// <summary>
+        /// Method is meant to write a file with a set of models.
+        /// </summary>
+        /// <param name="path">The path to the file we are saving to.</param>
+        /// <param name="models">The models we are saving.</param>
+        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
+        public static void SaveFile<TModel>(string path, params TModel[] models)
+            where TModel: class, new()
+        {
+            SaveFile<TModel>(path, models.ToList(), new CsvStreamOptions());
+        }
+
+        /// <summary>
+        /// Method is meant to write a file with a set of models.
+        /// </summary>
+        /// <param name="path">The path to the file we are saving to.</param>
+        /// <param name="models">The models we are saving.</param>
+        /// <param name="options">The options that should be sent off to the stream.</param>
+        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
+        public static void SaveFile<TModel>(string path, IEnumerable<TModel> models, CsvStreamOptions options)
+            where TModel: class, new()
+        {
+            using (var writer = new CsvStreamWriter<TModel>(path, options))
+            {
+                if (options.WriteHeaders) writer.WriteHeader();
+                foreach (var model in models) writer.WriteLine(model);
+            }
+        }
+
+        /// <summary>
         /// Found at: https://stackoverflow.com/questions/1879395/how-do-i-generate-a-stream-from-a-string
         /// </summary>
         /// <param name="s">The string that should be transformed into a stream.</param>
@@ -81,6 +149,16 @@ namespace SimpleCsvParser
             writer.Flush();
             stream.Position = 0;
             return stream;
+        }
+
+        /// <summary>
+        /// Helper method to convert the stream into a string result.
+        /// </summary>
+        /// <param name="stream">The stream that needs to be read.</param>
+        /// <returns>Will return the string read from the stream.</returns>
+        private static string ReadStream(Stream stream) {
+            var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
     }
 }

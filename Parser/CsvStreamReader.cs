@@ -225,7 +225,7 @@ namespace SimpleCsvParser
             if (_previousCount != -1 && _previousCount != parsed.Count) throw new MalformedException($"Line {lineNumber} has {parsed.Count} but should have {_previousCount}.");
             _previousCount = parsed.Count;
             if (!_options.RemoveEmptyEntries || parsed.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
-                return _converter.Process(parsed, lineNumber);
+                return _converter.Parse(parsed, lineNumber);
             return null;
         }
 

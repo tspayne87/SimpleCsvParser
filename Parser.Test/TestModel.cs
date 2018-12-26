@@ -4,15 +4,15 @@ namespace SimpleCsvParser.Test
 {
     public class TestModel
     {
-        [CsvProperty("name")]
+        [CsvProperty("name", 1)]
         public string Name { get; set; }
-        [CsvProperty("type")]
+        [CsvProperty("type", 2)]
         public TestType Type { get; set; }
-        [CsvProperty("cost")]
+        [CsvProperty("cost", 3)]
         public int Cost { get; set; }
-        [CsvProperty("id")]
+        [CsvProperty("id", 4)]
         public Double Id { get; set; }
-        [CsvProperty("date")]
+        [CsvProperty("date", 5)]
         public DateTime Date { get; set; }
     }
 

@@ -18,9 +18,10 @@ namespace SimpleCsvParser
         /// Constructor is meant to bind this property to a specific header.
         /// </summary>
         /// <param name="header">The header needed to be bound to, this is case-sensitive</param>
-        public CsvPropertyAttribute(string header)
+        public CsvPropertyAttribute(string header, int colIndex = -1)
         {
             Header = header;
+            ColIndex = colIndex;
         }
 
         /// <summary>

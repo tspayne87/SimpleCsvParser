@@ -22,5 +22,10 @@ namespace SimpleCsvParser
         /// If empty entries need to be removed from the list.
         /// </summary>
         public bool RemoveEmptyEntries { get; set; } = false;
+        /// <summary>
+        /// To determine if we need to write the headers to the stream, is only used in the csv parser static class.
+        /// </summary>
+        /// <value></value>
+        public bool WriteHeaders { get; set; } = true;
     }
 }
