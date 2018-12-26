@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <PackageId>SimpleCsvParser.Core</PackageId>
+    <TargetFramework>net45</TargetFramework>
+    <PackageId>SimpleCsvParser</PackageId>
     <Version>1.1.1</Version>
     <Authors>Terry Payne</Authors>
     <Company>Terry Payne</Company>
