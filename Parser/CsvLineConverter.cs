@@ -64,7 +64,7 @@ namespace SimpleCsvParser
                 } else {
                     line.Append(item);
                 }
-                line.Append(_options.Delimiter);
+                if (_attributes.Last().Key != attribute.Key) line.Append(_options.Delimiter);
             }
             return line.ToString();
         }
@@ -84,7 +84,7 @@ namespace SimpleCsvParser
                 } else {
                     line.Append(header);
                 }
-                line.Append(_options.Delimiter);
+                if (_attributes.Last().Key != attribute.Key) line.Append(_options.Delimiter);
             }
             return line.ToString();
         }

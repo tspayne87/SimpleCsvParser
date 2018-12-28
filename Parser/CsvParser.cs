@@ -75,19 +75,6 @@ namespace SimpleCsvParser
         }
 
         /// <summary>
-        /// Method is meant to parse out the model to a string for use somewhere else.
-        /// </summary>
-        /// <param name="model">The model that need to be parsed into a string.</param>
-        /// <param name="options">The options that should be sent off to the stream.</param>
-        /// <typeparam name="TModel">The model the parser needs to translate from.</typeparam>
-        /// <returns>Will return a parsed string of the objects being passed in.</returns>
-        public static string Stringify<TModel>(TModel model, CsvStreamOptions options)
-            where TModel: class, new()
-        {
-            return Stringify(new List<TModel>() { model }, options);
-        }
-
-        /// <summary>
         /// Method is meant to parse out the models to a string for use somewhere else.
         /// </summary>
         /// <param name="models">The models that need to be parsed into a string.</param>
@@ -97,14 +84,16 @@ namespace SimpleCsvParser
         public static string Stringify<TModel>(IEnumerable<TModel> models, CsvStreamOptions options)
             where TModel: class, new()
         {
+            var result = string.Empty;
             var stream = GenerateStream(string.Empty);
             using (var writer = new CsvStreamWriter<TModel>(stream, options))
             {
                 if (options.WriteHeaders) writer.WriteHeader();
                 foreach(var model in models) writer.WriteLine(model);
                 writer.Flush();
-                return ReadStream(stream);
+                result = ReadStream(stream);
             }
+            return result;
         }
 
         /// <summary>

@@ -85,16 +85,21 @@ namespace SimpleCsvParser
         /// </summary>
         /// <param name="model">The model to write to the stream.</param>
         public void WriteLine(TModel model) {
-            _writer.WriteLine(_converter.Stringify(model));
+            _writer.Write(_converter.Stringify(model));
+            _writer.Write(_options.RowDelimiter);
         }
 
         /// <summary>
         /// Method is meant to write the headers of the stream.
         /// </summary>
         public void WriteHeader() {
-            _writer.WriteLine(_converter.Stringify());
+            _writer.Write(_converter.Stringify());
+            _writer.Write(_options.RowDelimiter);
         }
 
+        /// <summary>
+        /// Method is meant to flush to the stream that was given to this writer.  And get it ready for reading.
+        /// </summary>
         public void Flush() {
             _writer.Flush();
             _stream.Position = 0;

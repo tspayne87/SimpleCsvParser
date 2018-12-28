@@ -32,7 +32,7 @@ namespace SimpleCsvParser.Test
         [TestMethod]
         public void TestTabDelimited()
         {
-            var result = CsvParser.Parse<TestModel>("name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987", new CsvStreamOptions() { Delimiter = '\t' }).FirstOrDefault();
+            var result = CsvParser.Parse<TestModel>("name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987", new CsvStreamOptions() { Delimiter = '\t', RowDelimiter = "\n" }).FirstOrDefault();
 
             Assert.AreEqual(result.Name, "Claws");
             Assert.AreEqual(result.Type, TestType.Attachment);
@@ -46,7 +46,7 @@ namespace SimpleCsvParser.Test
         public void TestCustomDelimiterAndWrapper()
         {
             var stream = StreamHelper.GenerateStream("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*");
-            using (var reader = new CsvStreamReader<TestModel>(stream, new CsvStreamOptions() { Delimiter = ';', Wrapper = '*' }))
+            using (var reader = new CsvStreamReader<TestModel>(stream, new CsvStreamOptions() { Delimiter = ';', Wrapper = '*', RowDelimiter = "\n" }))
             {
                 var result = reader.AsEnumerable().FirstOrDefault();
 
@@ -76,7 +76,7 @@ namespace SimpleCsvParser.Test
         [TestMethod]
         public void TestNoDefaults()
         {
-            using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false }))
+            using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, RowDelimiter = "\n" }))
             {
                 var result = reader.AsEnumerable().FirstOrDefault();
 

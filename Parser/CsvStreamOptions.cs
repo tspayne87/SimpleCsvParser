@@ -11,6 +11,11 @@ namespace SimpleCsvParser
         /// </summary>
         public char Wrapper { get; set; } = '"';
         /// <summary>
+        /// The row delimiter that should be used when breaking up the rows.
+        /// </summary>
+        /// <value></value>
+        public string RowDelimiter { get; set; } = "\r\n";
+        /// <summary>
         /// If defaults should be used when building out the objects.
         /// </summary>
         public bool AllowDefaults { get; set; } = true;
