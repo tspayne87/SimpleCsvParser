@@ -145,7 +145,8 @@ namespace SimpleCsvParser
         /// </summary>
         /// <param name="stream">The stream that needs to be read.</param>
         /// <returns>Will return the string read from the stream.</returns>
-        private static string ReadStream(Stream stream) {
+        private static string ReadStream(Stream stream)
+        {
             var reader = new StreamReader(stream);
             return reader.ReadToEnd();
         }

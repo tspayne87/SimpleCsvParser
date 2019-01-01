@@ -64,9 +64,9 @@ namespace SimpleCsvParser
                 } else {
                     line.Append(item);
                 }
-                if (_attributes.Last().Key != attribute.Key) line.Append(_options.Delimiter);
+                line.Append(_options.Delimiter);
             }
-            return line.ToString();
+            return line.ToString(0, line.Length - 1);
         }
 
         /// <summary>
@@ -75,13 +75,17 @@ namespace SimpleCsvParser
         /// <returns>Will return the headers for the object.</returns>
         public string Stringify() {
             var line = new StringBuilder();
-            foreach (var attribute in _attributes) {
+            foreach (var attribute in _attributes)
+            {
                 var header = string.IsNullOrEmpty(attribute.Value.Header) ? $"Column {attribute.Value.ColIndex}" : attribute.Value.Header;
-                if (header.IndexOf(_options.Delimiter) > -1) {
+                if (header.IndexOf(_options.Delimiter) > -1)
+                {
                     line.Append(_options.Wrapper);
                     line.Append(header);
                     line.Append(_options.Wrapper);
-                } else {
+                }
+                else
+                {
                     line.Append(header);
                 }
                 if (_attributes.Last().Key != attribute.Key) line.Append(_options.Delimiter);

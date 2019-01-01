@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SimpleCsvParser
@@ -89,52 +92,73 @@ namespace SimpleCsvParser
         #endregion
 
         /// <summary>
-        /// Converts the stream into a enumerable list of models.
+        /// Helper method that will convert the streams into a list of char characters based on each of the rows.
         /// </summary>
-        /// <param name="eachItem">The callback that should be used for each item.</param>
+        /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
         public IEnumerable<TModel> AsEnumerable()
         {
-            var index = 0;
-            foreach (var line in InternalRead())
+            var skipFirst = false;
+            var line = 0;
+            foreach (var block in ReadBlocks())
             {
+                var enumerable = _lineBuilder.SplitRow(block, _reader.Peek() == -1);
+                skipFirst = false;
                 if (_converter == null)
                 {
                     if (_options.ParseHeaders)
                     {
-                        _previousCount = line.Count;
-                        _converter = new CsvLineConverter<TModel>(_options, line);
+                        _converter = new CsvLineConverter<TModel>(_options, _lineBuilder.SplitColumn(enumerable.First()));
+                        skipFirst = true;
                     }
                     else
                     {
                         _converter = new CsvLineConverter<TModel>(_options, null);
-                        var model = ReadLine(line, ++index);
-                        if (model != null) yield return model;
                     }
                 }
-                else
+
+                var data = new List<TModel>();
+                try
                 {
-                    var model = ReadLine(line, ++index);
-                    if (model != null) yield return model;
+                    data = enumerable.Skip(skipFirst ? 1 : 0)
+                        .AsParallel()
+                        .AsOrdered()
+                        .Select((row, index) => {
+                            return ReadLine(_lineBuilder.SplitColumn(row), line + index);
+                        }).ToList();
+                }
+                catch (Exception ex)
+                {
+                    if (ex.InnerException != null)
+                    {
+                        throw ex.InnerException;
+                    }
+                    else
+                    {
+                        throw ex;
+                    }
+                }
+
+                foreach (var item in data)
+                {
+                    if (item != null)
+                    {
+                        line++;
+                        yield return item;
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// Helper method that will convert the streams into a list of char characters based on each of the rows.
+        /// Helper method to read from the stream in blocks.
         /// </summary>
-        /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
-        private IEnumerable<List<string>> InternalRead()
+        /// <returns>Will return a block of data.</returns>
+        private IEnumerable<char[]> ReadBlocks()
         {
             char[] buffer = new char[256 * 1024]; // Create a buffer to store the characters loaded from the stream.
-            while (_reader.Peek() != -1)
-            {
-                var blockIndex = _reader.ReadBlock(buffer, 0, buffer.Length);
-                var isEnd = _reader.Peek() == -1;
-                foreach(var line in _lineBuilder.Parse(isEnd ? buffer.Take(blockIndex).ToArray() : buffer, isEnd))
-                {
-                    yield return line;
-                }
-            }
+            int blockIndex = 0;
+            while((blockIndex = _reader.Read(buffer, 0, buffer.Length)) > 0)
+                yield return blockIndex == buffer.Length ? buffer : buffer.Take(blockIndex).ToArray();
         }
 
         /// <summary>
@@ -145,7 +169,7 @@ namespace SimpleCsvParser
         /// <returns>Will return the desired object or null if nothing needs to be processed.</returns>
         private TModel ReadLine(List<string> line, int lineNumber)
         {
-            if (_previousCount != -1 && _previousCount != line.Count) throw new MalformedException($"Line {lineNumber} has {line.Count} but should have {_previousCount}.");
+            // if (_previousCount != -1 && _previousCount != line.Count) throw new MalformedException($"Line {lineNumber} has {line.Count} but should have {_previousCount}.");
             _previousCount = line.Count;
             if (!_options.RemoveEmptyEntries || line.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
                 return _converter.Parse(line, lineNumber);
