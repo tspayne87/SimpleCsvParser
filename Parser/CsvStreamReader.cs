@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using SimpleCsvParser.Readers;
 
 namespace SimpleCsvParser
 {
@@ -19,21 +20,13 @@ namespace SimpleCsvParser
         /// </summary>
         private readonly CsvStreamOptions _options;
         /// <summary>
-        /// The line parser to convert each line to a list of string that will be parsed.
-        /// </summary>
-        private readonly CsvLineBuilder _lineBuilder;
-        /// <summary>
         /// The converter that will deal with changing the list of strings into an object.
         /// </summary>
-        private CsvLineConverter<TModel> _converter;
-        /// <summary>
-        /// Internal use of the previous count to make sure the csv file is formatted correctly.
-        /// </summary>
-        private int _previousCount = -1;
+        private CsvConverter<TModel> _converter;
         /// <summary>
         /// The reader we will be getting data from.
         /// </summary>
-        private StreamReader _reader;
+        private readonly RowReader _rowReader;
         /// <summary>
         /// The stream that we need to dispose.
         /// </summary>
@@ -47,9 +40,8 @@ namespace SimpleCsvParser
         public CsvStreamReader(Stream stream)
         {
             _options = new CsvStreamOptions();
-            _lineBuilder = new CsvLineBuilder(_options);
             _stream = stream;
-            _reader = new StreamReader(_stream);
+            _rowReader = new RowReader(new CharReader(_stream), _options);
         }
 
         /// <summary>
@@ -59,9 +51,8 @@ namespace SimpleCsvParser
         public CsvStreamReader(string path)
         {
             _options = new CsvStreamOptions();
-            _lineBuilder = new CsvLineBuilder(_options);
             _stream = File.Open(path, FileMode.Open, FileAccess.Read);
-            _reader = new StreamReader(_stream);
+            _rowReader = new RowReader(new CharReader(_stream), _options);
         }
 
         /// <summary>
@@ -72,9 +63,8 @@ namespace SimpleCsvParser
         public CsvStreamReader(Stream stream, CsvStreamOptions options)
         {
             _options = options;
-            _lineBuilder = new CsvLineBuilder(_options);
             _stream = stream;
-            _reader = new StreamReader(_stream);
+            _rowReader = new RowReader(new CharReader(_stream), _options);
         }
 
         /// <summary>
@@ -85,9 +75,8 @@ namespace SimpleCsvParser
         public CsvStreamReader(string path, CsvStreamOptions options)
         {
             _options = options;
-            _lineBuilder = new CsvLineBuilder(_options);
             _stream = File.Open(path, FileMode.Open, FileAccess.Read);
-            _reader = new StreamReader(_stream);
+            _rowReader = new RowReader(new CharReader(_stream), _options);
         }
         #endregion
 
@@ -97,83 +86,38 @@ namespace SimpleCsvParser
         /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
         public IEnumerable<TModel> AsEnumerable()
         {
-            var skipFirst = false;
-            var line = 0;
-            foreach (var block in ReadBlocks())
-            {
-                var enumerable = _lineBuilder.SplitRow(block, _reader.Peek() == -1);
-                skipFirst = false;
-                if (_converter == null)
-                {
-                    if (_options.ParseHeaders)
-                    {
-                        _converter = new CsvLineConverter<TModel>(_options, _lineBuilder.SplitColumn(enumerable.First()));
-                        skipFirst = true;
-                    }
-                    else
-                    {
-                        _converter = new CsvLineConverter<TModel>(_options, null);
-                    }
-                }
+            _converter = new CsvConverter<TModel>(_options, _options.ParseHeaders ? CsvHelper.Split(_rowReader.AsEnumerable().First(), _options) : null);
 
-                var data = new List<TModel>();
-                try
-                {
-                    data = enumerable.Skip(skipFirst ? 1 : 0)
-                        .AsParallel()
-                        .AsOrdered()
-                        .Select((row, index) => {
-                            return ReadLine(_lineBuilder.SplitColumn(row), line + index);
-                        }).ToList();
-                }
-                catch (Exception ex)
-                {
-                    if (ex.InnerException != null)
-                    {
-                        throw ex.InnerException;
-                    }
-                    else
-                    {
-                        throw ex;
-                    }
-                }
-
-                foreach (var item in data)
-                {
-                    if (item != null)
-                    {
-                        line++;
-                        yield return item;
-                    }
-                }
-            }
+            return _rowReader.AsEnumerable()
+                .Skip(_options.ParseHeaders ? 1 : 0)
+                .Select((row, index) => {
+                    var splitRow = CsvHelper.Split(row, _options);
+                    if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
+                        return _converter.Parse(splitRow, index);
+                    return null;
+                })
+                .Where(x => x != null);
         }
 
         /// <summary>
-        /// Helper method to read from the stream in blocks.
+        /// Helper method that will convert the streams into a list of char characters based on each of the rows.
         /// </summary>
-        /// <returns>Will return a block of data.</returns>
-        private IEnumerable<char[]> ReadBlocks()
+        /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
+        public ParallelQuery<TModel> AsParallel()
         {
-            char[] buffer = new char[256 * 1024]; // Create a buffer to store the characters loaded from the stream.
-            int blockIndex = 0;
-            while((blockIndex = _reader.Read(buffer, 0, buffer.Length)) > 0)
-                yield return blockIndex == buffer.Length ? buffer : buffer.Take(blockIndex).ToArray();
-        }
+            _converter = new CsvConverter<TModel>(_options, _options.ParseHeaders ? CsvHelper.Split(_rowReader.AsEnumerable().First(), _options) : null);
 
-        /// <summary>
-        /// Helper method is meant to read a char array and convert it to the desired object.
-        /// </summary>
-        /// <param name="line">The char array we need to parse.</param>
-        /// <param name="lineNumber">The current line number this line is in the file or string.</param>
-        /// <returns>Will return the desired object or null if nothing needs to be processed.</returns>
-        private TModel ReadLine(List<string> line, int lineNumber)
-        {
-            // if (_previousCount != -1 && _previousCount != line.Count) throw new MalformedException($"Line {lineNumber} has {line.Count} but should have {_previousCount}.");
-            _previousCount = line.Count;
-            if (!_options.RemoveEmptyEntries || line.Where(x => string.IsNullOrEmpty(x)).Count() != _previousCount)
-                return _converter.Parse(line, lineNumber);
-            return null;
+            return _rowReader.AsEnumerable()
+                .Skip(_options.ParseHeaders ? 1 : 0)
+                .AsParallel()
+                .AsOrdered()
+                .Select((row, index) => {
+                    var splitRow = CsvHelper.Split(row, _options);
+                    if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
+                        return _converter.Parse(splitRow, index);
+                    return null;
+                })
+                .Where(x => x != null);
         }
 
         #region IDisposable Support
@@ -190,7 +134,6 @@ namespace SimpleCsvParser
                 if (disposing)
                 {
                     _stream.Dispose();
-                    _reader.Dispose();
                 }
                 disposedValue = true;
             }

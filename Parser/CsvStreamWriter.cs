@@ -18,7 +18,7 @@ namespace SimpleCsvParser
         /// <summary>
         /// The converter that will deal with changing the list of strings into an object.
         /// </summary>
-        private readonly CsvLineConverter<TModel> _converter;
+        private readonly CsvConverter<TModel> _converter;
         /// <summary>
         /// The writer we will be writing to.
         /// </summary>
@@ -41,7 +41,7 @@ namespace SimpleCsvParser
         {
             _options = new CsvStreamOptions();
             _stream = stream;
-            _converter = new CsvLineConverter<TModel>(_options, new List<string>());
+            _converter = new CsvConverter<TModel>(_options, new List<string>());
             _writer = new StreamWriter(_stream, Encoding.UTF8);
             _buffer = new StringBuilder(256 * 1024);
         }
@@ -54,7 +54,7 @@ namespace SimpleCsvParser
         {
             _options = new CsvStreamOptions();
             _stream = File.Open(path, FileMode.Truncate, FileAccess.Write);
-            _converter = new CsvLineConverter<TModel>(_options, new List<string>());
+            _converter = new CsvConverter<TModel>(_options, new List<string>());
             _writer = new StreamWriter(_stream, Encoding.UTF8);
             _buffer = new StringBuilder(256 * 1024);
         }
@@ -68,7 +68,7 @@ namespace SimpleCsvParser
         {
             _options = options;
             _stream = stream;
-            _converter = new CsvLineConverter<TModel>(_options, new List<string>());
+            _converter = new CsvConverter<TModel>(_options, new List<string>());
             _writer = new StreamWriter(_stream, Encoding.UTF8);
             _buffer = new StringBuilder(256 * 1024);
         }
@@ -82,7 +82,7 @@ namespace SimpleCsvParser
         {
             _options = options;
             _stream = File.Open(path, FileMode.Truncate, FileAccess.Write);
-            _converter = new CsvLineConverter<TModel>(_options, new List<string>());
+            _converter = new CsvConverter<TModel>(_options, new List<string>());
             _writer = new StreamWriter(_stream, Encoding.UTF8);
             _buffer = new StringBuilder(256 * 1024);
         }

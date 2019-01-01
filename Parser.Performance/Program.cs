@@ -22,7 +22,7 @@ namespace SimpleCsvParser.Performance
             stopwatch.Start();
             using (var reader = new CsvStreamReader<TModel>(file))
             {
-                foreach (var model in reader.AsEnumerable()) { }
+                foreach (var model in reader.AsParallel()) { }
             }
             stopwatch.Stop();
             Console.WriteLine($"Total Elapsed Time: {stopwatch.Elapsed}");

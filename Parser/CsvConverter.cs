@@ -6,7 +6,7 @@ using System.Text;
 
 namespace SimpleCsvParser
 {
-    internal class CsvLineConverter<TModel>
+    internal class CsvConverter<TModel>
         where TModel : class, new()
     {
         /// <summary>
@@ -24,9 +24,14 @@ namespace SimpleCsvParser
         /// </summary>
         /// <param name="options">The options this converter should use when building out the objects.</param>
         /// <param name="headers">The headers that should be used to build the objects.</param>
-        public CsvLineConverter(CsvStreamOptions options, List<string> headers = null)
+        public CsvConverter(CsvStreamOptions options, List<string> headers = null)
         {
-            if (headers == null && options.ParseHeaders) throw new ArgumentException("No headers were found.");
+            if (options.RowDelimiter.IndexOf(options.Wrapper) > -1 || options.RowDelimiter.IndexOf(options.Delimiter) > -1)
+                throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
+            if (options.Wrapper == options.Delimiter)
+                throw new ArgumentException("Wrapper and Delimiter cannot be equal");
+            if (headers == null && options.ParseHeaders)
+                throw new ArgumentException("No headers were found.");
 
             _options = options;
             _attributes = typeof(TModel)
@@ -53,15 +58,19 @@ namespace SimpleCsvParser
         public string Stringify(TModel model)
         {
             var line = new StringBuilder();
-            foreach (var attribute in _attributes) {
+            foreach (var attribute in _attributes)
+            {
                 var value = attribute.Key.GetValue(model);
 
                 var item = value == null ? string.Empty : value.ToString();
-                if (item.IndexOf(_options.Delimiter) > -1) {
+                if (item.IndexOf(_options.Delimiter) > -1)
+                {
                     line.Append(_options.Wrapper);
                     line.Append(item);
                     line.Append(_options.Wrapper);
-                } else {
+                }
+                else
+                {
                     line.Append(item);
                 }
                 line.Append(_options.Delimiter);
@@ -134,6 +143,62 @@ namespace SimpleCsvParser
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Method is meant to parse the current char array and build out the lines for the csv object.
+        /// </summary>
+        /// <param name="current">The current array we are processing.</param>
+        /// <param name="isEnd">If we are at the end of the file being processed.</param>
+        /// <returns>Returns an IEnumerable with yields that return the results as they are asked for.</returns>
+        public List<string> Split(Queue<char> q)
+        {
+            var escaped = false;
+            var noDelimiter = true;
+            var results = new List<string>();
+            var builder = new StringBuilder();
+
+            while(q.Count > 0)
+            {
+                var current = q.Dequeue();
+                if (escaped)
+                { // Deal with if we are in a wrapper.
+                    if (current == _options.Wrapper && q.Count > 0 && q.Peek() == _options.Wrapper)
+                    {
+                        builder.Append(q.Dequeue());
+                    }
+                    else if (current == _options.Wrapper)
+                    {
+                        escaped = false;
+                    }
+                    else
+                    {
+                        builder.Append(current);
+                    }
+                }
+                else if (current == _options.Wrapper)
+                { // Escape the value and start parsing as such
+                    escaped = true;
+                }
+                else if (current == _options.Delimiter)
+                { // If we encounter a delmitier we want to put the current string into the results and clear the builder.
+                    noDelimiter = false;
+                    results.Add(builder.ToString());
+                    builder.Clear();
+                }
+                else
+                { // Append the new char
+                    builder.Append(current);
+                }
+            }
+
+            if (noDelimiter) throw new MalformedException("No Delimiter was found.");
+            if (builder.Length > 0)
+            {
+                results.Add(builder.EndsWith(_options.RowDelimiter) ? builder.ToString(0, builder.Length - _options.RowDelimiter.Length) : builder.ToString());
+            }
+
+            return results;
         }
 
         /// <summary>
