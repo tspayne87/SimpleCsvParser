@@ -6,13 +6,96 @@ using System.Text;
 
 namespace SimpleCsvParser
 {
-    internal class CsvConverter<TModel>
-        where TModel : class, new()
+    internal class CsvConverter
     {
         /// <summary>
         /// Special options needed to determine what should be done with the parser.
         /// </summary>
-        private readonly CsvStreamOptions _options;
+        protected readonly CsvStreamOptions _options;
+        /// <summary>
+        /// The current headers for the converter
+        /// </summary>
+        protected readonly List<string> _headers;
+
+        /// <summary>
+        /// Constructor to cache various pieces of the parser to deal with converting to the model given in the generic class.
+        /// </summary>
+        /// <param name="options">The options this converter should use when building out the objects.</param>
+        /// <param name="headers">The headers that should be used to build the objects.</param>
+        public CsvConverter(CsvStreamOptions options, List<string> headers = null)
+        {
+            if (options.RowDelimiter.IndexOf(options.Wrapper) > -1 || options.RowDelimiter.IndexOf(options.Delimiter) > -1)
+                throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
+            if (options.Wrapper.ToString() == options.Delimiter)
+                throw new ArgumentException("Wrapper and Delimiter cannot be equal");
+            if (headers == null && options.ParseHeaders)
+                throw new ArgumentException("No headers were found.");
+
+            _options = options;
+            _headers = headers;
+        }
+
+        /// <summary>
+        /// Method is meant to turn an object into the csv string to build out files.
+        /// </summary>
+        /// <param name="model">The model that needs to be parsed.</param>
+        /// <returns>Will return the stringified version of the model for saving to a file.</returns>
+        public string Stringify(Dictionary<string, string> model)
+        {
+            var line = new StringBuilder();
+            foreach (var pair in model)
+            {
+                var item = string.IsNullOrEmpty(pair.Value) ? string.Empty : pair.Value.ToString();
+                line.Append(_options.Wrapper);
+                line.Append(item);
+                line.Append(_options.Wrapper);
+                line.Append(_options.Delimiter);
+            }
+            return line.ToString(0, line.Length - 1);
+        }
+
+        public string Stringify()
+        {
+            var line = new StringBuilder();
+            foreach (var header in _headers)
+            {
+                line.Append(header);
+                line.Append(_options.Delimiter);
+            }
+            return line.ToString(0, line.Length - 1);
+        }
+
+        /// <summary>
+        /// Method is meant to parse the rows collected from the csv file and turn the into the objects requested.
+        /// </summary>
+        /// <param name="headers">The headers we should be using to parse on based on attributes.</param>
+        /// <param name="rows">The data rows we need to process from the create the objects.</param>
+        /// <typeparam name="TModel">The models we will be generating.</typeparam>
+        /// <returns>Returns a dictionary based on the headers and values given.</returns>
+        public Dictionary<string, string> ToDictionary(List<string> row, long lineNumber)
+        {
+            var result = new Dictionary<string, string>();
+            for (var i = 0; i < row.Count; ++i)
+            {
+                result[GetKey(i)] = row[i];
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Helper method to build out a key that will be added to the dictionary.
+        /// </summary>
+        /// <param name="i">The index of the key.</param>
+        /// <returns>The key we need to use to build out this dictionary.</returns>
+        public string GetKey(int i)
+        {
+            return _headers.Count > i ? _headers[i] : string.Format("Column{0}", i);
+        }
+    }
+
+    internal class CsvConverter<TModel> : CsvConverter
+        where TModel : class, new()
+    {
         private readonly IEnumerable<KeyValuePair<PropertyInfo, CsvPropertyAttribute>> _attributes;
         /// <summary>
         /// The collection of props built from the model bound to this class.
@@ -25,15 +108,8 @@ namespace SimpleCsvParser
         /// <param name="options">The options this converter should use when building out the objects.</param>
         /// <param name="headers">The headers that should be used to build the objects.</param>
         public CsvConverter(CsvStreamOptions options, List<string> headers = null)
+            : base(options, headers)
         {
-            if (options.RowDelimiter.IndexOf(options.Wrapper) > -1 || options.RowDelimiter.IndexOf(options.Delimiter) > -1)
-                throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
-            if (options.Wrapper == options.Delimiter)
-                throw new ArgumentException("Wrapper and Delimiter cannot be equal");
-            if (headers == null && options.ParseHeaders)
-                throw new ArgumentException("No headers were found.");
-
-            _options = options;
             _attributes = typeof(TModel)
                 .GetProperties()
                 .Where(prop => Attribute.IsDefined(prop, typeof(CsvPropertyAttribute)))
@@ -58,12 +134,18 @@ namespace SimpleCsvParser
         public string Stringify(TModel model)
         {
             var line = new StringBuilder();
+            // Build out some escapable variables to escape properly
+            var escapable = new List<string>() {
+                _options.Wrapper.ToString(),
+                _options.HeaderRowDelimiter, _options.HeaderDelimiter,
+                _options.RowDelimiter, _options.Delimiter
+            };
             foreach (var attribute in _attributes)
             {
                 var value = attribute.Key.GetValue(model);
-
                 var item = value == null ? string.Empty : value.ToString();
-                if (item.IndexOf(_options.Delimiter) > -1)
+
+                if (attribute.Key.PropertyType == typeof(string) || escapable.Any(x => item.Contains(x)))
                 {
                     line.Append(_options.Wrapper);
                     line.Append(item);
@@ -82,7 +164,8 @@ namespace SimpleCsvParser
         /// Method is meant to build the headers for an object.
         /// </summary>
         /// <returns>Will return the headers for the object.</returns>
-        public string Stringify() {
+        public new string Stringify()
+        {
             var line = new StringBuilder();
             foreach (var attribute in _attributes)
             {
@@ -143,62 +226,6 @@ namespace SimpleCsvParser
                 }
             }
             return result;
-        }
-
-        /// <summary>
-        /// Method is meant to parse the current char array and build out the lines for the csv object.
-        /// </summary>
-        /// <param name="current">The current array we are processing.</param>
-        /// <param name="isEnd">If we are at the end of the file being processed.</param>
-        /// <returns>Returns an IEnumerable with yields that return the results as they are asked for.</returns>
-        public List<string> Split(Queue<char> q)
-        {
-            var escaped = false;
-            var noDelimiter = true;
-            var results = new List<string>();
-            var builder = new StringBuilder();
-
-            while(q.Count > 0)
-            {
-                var current = q.Dequeue();
-                if (escaped)
-                { // Deal with if we are in a wrapper.
-                    if (current == _options.Wrapper && q.Count > 0 && q.Peek() == _options.Wrapper)
-                    {
-                        builder.Append(q.Dequeue());
-                    }
-                    else if (current == _options.Wrapper)
-                    {
-                        escaped = false;
-                    }
-                    else
-                    {
-                        builder.Append(current);
-                    }
-                }
-                else if (current == _options.Wrapper)
-                { // Escape the value and start parsing as such
-                    escaped = true;
-                }
-                else if (current == _options.Delimiter)
-                { // If we encounter a delmitier we want to put the current string into the results and clear the builder.
-                    noDelimiter = false;
-                    results.Add(builder.ToString());
-                    builder.Clear();
-                }
-                else
-                { // Append the new char
-                    builder.Append(current);
-                }
-            }
-
-            if (noDelimiter) throw new MalformedException("No Delimiter was found.");
-            if (builder.Length > 0)
-            {
-                results.Add(builder.EndsWith(_options.RowDelimiter) ? builder.ToString(0, builder.Length - _options.RowDelimiter.Length) : builder.ToString());
-            }
-
-            return results;
         }
 
         /// <summary>

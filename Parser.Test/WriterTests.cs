@@ -70,9 +70,11 @@ namespace SimpleCsvParser.Test
         {
             var total = 25;
             var options = new CsvStreamOptions() {
-                Delimiter = ':',
+                Delimiter = ":",
                 RowDelimiter = "|||",
-                Wrapper = '\''
+                Wrapper = '\'',
+                HeaderRowDelimiter = "|||",
+                HeaderDelimiter = ":"
             };
 
             var list = new List<TestModel>();

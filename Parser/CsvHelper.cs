@@ -9,13 +9,17 @@ namespace SimpleCsvParser
     internal static class CsvHelper
     {
         /// <summary>
-        /// Method is meant to parse the current char array and build out the lines for the csv object.
+        /// Helper method is meant to take a char array that is representation of a row and split it up to its string columns.
         /// </summary>
-        /// <param name="current">The current array we are processing.</param>
-        /// <param name="isEnd">If we are at the end of the file being processed.</param>
-        /// <returns>Returns an List of strings that represent the csv file.</returns>
-        public static List<string> Split(Queue<char> q, CsvStreamOptions options)
+        /// <param name="q">The char array we need to convert.</param>
+        /// <param name="delimiter">The delimiter we need to break the columns up by.</param>
+        /// <param name="wrapper">The wrapper to break apart strings.</param>
+        /// <param name="rowDelimiter">The row delimiter to determine exceptions.</param>
+        /// <returns></returns>
+        public static List<string> Split(Queue<char> q, string delimiter, char wrapper, string rowDelimiter)
         {
+            if (q == null) return null;
+
             var escaped = false;
             var noDelimiter = true;
             var results = new List<string>();
@@ -24,41 +28,36 @@ namespace SimpleCsvParser
             while(q.Count > 0)
             {
                 var current = q.Dequeue();
+                builder.Append(current);
+
                 if (escaped)
                 { // Deal with if we are in a wrapper.
-                    if (current == options.Wrapper && q.Count > 0 && q.Peek() == options.Wrapper)
+                    if (current == wrapper && q.Count > 0 && q.Peek() == wrapper)
                     {
-                        builder.Append(q.Dequeue());
+                        q.Dequeue();
                     }
-                    else if (current == options.Wrapper)
+                    else if (current == wrapper)
                     {
                         escaped = false;
-                    }
-                    else
-                    {
-                        builder.Append(current);
+                        builder.Remove(builder.Length - 1, 1);
                     }
                 }
-                else if (current == options.Wrapper)
+                else if (current == wrapper)
                 { // Escape the value and start parsing as such
                     escaped = true;
+                    builder.Remove(builder.Length - 1, 1);
                 }
-                else if (current == options.Delimiter)
+                else if (builder.EndsWith(delimiter))
                 { // If we encounter a delmitier we want to put the current string into the results and clear the builder.
                     noDelimiter = false;
-                    results.Add(builder.ToString());
+                    results.Add(builder.ToString(0, builder.Length - delimiter.Length));
                     builder.Clear();
                 }
-                else
-                { // Append the new char
-                    builder.Append(current);
-                }
             }
-
-            if (noDelimiter) throw new MalformedException("No Delimiter was found.");
+            
             if (builder.Length > 0)
             {
-                results.Add(builder.EndsWith(options.RowDelimiter) ? builder.ToString(0, builder.Length - options.RowDelimiter.Length) : builder.ToString());
+                results.Add(builder.EndsWith(rowDelimiter) ? builder.ToString(0, builder.Length - rowDelimiter.Length) : builder.ToString());
             }
 
             return results;

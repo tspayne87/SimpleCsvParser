@@ -10,7 +10,7 @@ namespace SimpleCsvParser.Test
         [ExpectedException(typeof(MalformedException))]
         public void TestNoDefaults()
         {
-            using (var reader = new CsvStreamReader<SecondTestModel>(StreamHelper.GenerateStream("Claws,,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, ParseHeaders = false }))
+            using (var reader = new CsvStreamReader<SecondTestModel>(StreamHelper.GenerateStream("Claws,,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, ParseHeaders = false, DataRow = 0 }))
             {
                 reader.AsEnumerable().ToList();
             }
@@ -34,13 +34,6 @@ namespace SimpleCsvParser.Test
             {
                 reader.AsEnumerable().ToList();
             }
-        }
-
-        [TestMethod]
-        [ExpectedException(typeof(MalformedException))]
-        public void TestNoDelimiterException()
-        {
-            var result = CsvParser.Parse<TestModel>("name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987");
         }
     }
 }

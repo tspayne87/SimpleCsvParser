@@ -11,19 +11,25 @@ namespace SimpleCsvParser.Readers
         /// </summary>
         private readonly CharReader _reader;
         /// <summary>
-        /// The stream options that should be used to parse the rows.
+        /// The Delimiter we need to break the rows up by.
         /// </summary>
-        private readonly CsvStreamOptions _options;
+        private string _delimiter;
+        /// <summary>
+        /// The wrapper we need to use when needing to escape string data.
+        /// </summary>
+        private char _wrapper;
 
         /// <summary>
         /// Constructor to build a row from the stream.
         /// </summary>
         /// <param name="reader">The char reader that needs to be read from.</param>
-        /// <param name="options">The options used for the stream.</param>
-        public RowReader(CharReader reader, CsvStreamOptions options)
+        /// <param name="delimiter">The delimiter we need to break the char reader up by.</param>
+        /// <param name="wrapper">The wrapper we need to use to determine when we need to escape things.</param>
+        public RowReader(CharReader reader, string delimiter, char wrapper)
         {
             _reader = reader;
-            _options = options;
+            _delimiter = delimiter;
+            _wrapper = wrapper;
         }
 
         /// <summary>
@@ -39,14 +45,14 @@ namespace SimpleCsvParser.Readers
                     var current = iter.Current;
                     var escaped = false;
                     var queue = new Queue<char>();
-                    var rowBreak = _options.RowDelimiter.ToCharArray();
+                    var rowBreak = _delimiter.ToCharArray();
                     var currentRowBreak = new char[rowBreak.Length];
 
                     while(iter.MoveNext())
                     {
                         if (escaped)
                         { // Deal with if we are in a wrapper.
-                            if (current == _options.Wrapper && iter.Current == _options.Wrapper)
+                            if (current == _wrapper && iter.Current == _wrapper)
                             {
                                 queue.Enqueue(current);
                                 queue.Enqueue(iter.Current);
@@ -55,7 +61,7 @@ namespace SimpleCsvParser.Readers
                                     throw new MalformedException("End of stream was reached while being escaped.");
                                 }
                             }
-                            else if (current == _options.Wrapper)
+                            else if (current == _wrapper)
                             {
                                 queue.Enqueue(current);
                                 escaped = false;
@@ -65,7 +71,7 @@ namespace SimpleCsvParser.Readers
                                 queue.Enqueue(current);
                             }
                         }
-                        else if (current == _options.Wrapper)
+                        else if (current == _wrapper)
                         { // Escape the value and start parsing as such
                             queue.Enqueue(current);
                             escaped = true;
@@ -94,7 +100,7 @@ namespace SimpleCsvParser.Readers
                     }
                     
                     queue.Enqueue(current);
-                    if (!escaped || current == _options.Wrapper) yield return queue;
+                    if (!escaped || current == _wrapper) yield return queue;
                     else if (escaped) throw new MalformedException("End of stream was reached while being escaped.");
                 }
             }

@@ -27,7 +27,7 @@ namespace SimpleCsvParser.Test
             var fileName = "test.large.csv";
             var options = new CsvStreamOptions()
             {
-                Delimiter = ':',
+                Delimiter = ":",
                 RowDelimiter = "|||",
                 Wrapper = '\''
             };
