@@ -1,5 +1,6 @@
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SimpleCsvParser.Streams;
 
 namespace SimpleCsvParser.Test
 {

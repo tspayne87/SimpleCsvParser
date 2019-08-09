@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SimpleCsvParser.Streams;
 
 namespace SimpleCsvParser.Test
 {
@@ -29,6 +30,31 @@ namespace SimpleCsvParser.Test
         {
             var entries = CsvParser.ParseFile<TestModel>("test.csv", new CsvStreamOptions() { RemoveEmptyEntries = true, DataRow = 10 }).ToList();
             Assert.AreEqual(entries.Count(), 12);
+        }
+
+        [TestMethod]
+        public void TestRowEntries()
+        {
+            using(var reader = new CsvRowStreamReader("test.csv", new CsvStreamOptions() { RemoveEmptyEntries = true }))
+            {
+                var entries = reader.AsEnumerable(out var header).ToList();
+                Assert.AreEqual(entries.Count(), 24);
+            }
+        }
+
+        [TestMethod]
+        public void TestRowStream()
+        {
+            var stream = StreamHelper.GenerateStream("This is an example message\r\nThe Data follows this\r\nAnother Test String");
+            using(var reader = new CsvRowStreamReader(stream, new CsvStreamOptions() { RemoveEmptyEntries = true }))
+            {
+                var entries = reader.AsEnumerable(out var header).ToList();
+
+                Assert.AreEqual(header, "This is an example message");
+
+                Assert.AreEqual(entries[0], "The Data follows this");
+                Assert.AreEqual(entries[1], "Another Test String");
+            }
         }
 
         [TestMethod]

@@ -15,13 +15,13 @@ namespace SimpleCsvParser
         /// <param name="delimiter">The delimiter we need to break the columns up by.</param>
         /// <param name="wrapper">The wrapper to break apart strings.</param>
         /// <param name="rowDelimiter">The row delimiter to determine exceptions.</param>
+        /// <param name="emptyColumns">The lamda expression to get empty columns.</param>
         /// <returns></returns>
-        public static List<string> Split(Queue<char> q, string delimiter, char wrapper, string rowDelimiter)
+        public static List<string> Split(Queue<char> q, string delimiter, char wrapper, string rowDelimiter, Func<int, string> emptyColumns = null)
         {
             if (q == null) return null;
 
             var escaped = false;
-            var noDelimiter = true;
             var results = new List<string>();
             var builder = new StringBuilder();
 
@@ -49,7 +49,6 @@ namespace SimpleCsvParser
                 }
                 else if (builder.EndsWith(delimiter))
                 { // If we encounter a delmitier we want to put the current string into the results and clear the builder.
-                    noDelimiter = false;
                     results.Add(builder.ToString(0, builder.Length - delimiter.Length));
                     builder.Clear();
                 }
@@ -59,6 +58,11 @@ namespace SimpleCsvParser
             {
                 results.Add(builder.EndsWith(rowDelimiter) ? builder.ToString(0, builder.Length - rowDelimiter.Length) : builder.ToString());
             }
+
+            if (emptyColumns != null)
+                for (var i = 0; i < results.Count; ++i)
+                    if (results[i].Trim().Length == 0)
+                        results[i] = emptyColumns(i);
 
             return results;
         }

@@ -92,7 +92,7 @@ namespace SimpleCsvParser.Readers
                                     current = iter.Current;
                                     continue;
                                 }
-                                yield return queue;
+                                yield return new Queue<char>(queue.Take(queue.Count - rowBreak.Length));
                                 queue = new Queue<char>();
                             }
                         }
