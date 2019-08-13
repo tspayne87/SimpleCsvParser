@@ -58,6 +58,22 @@ namespace SimpleCsvParser.Test
         }
 
         [TestMethod]
+        public void TestWithNoWrapper()
+        {
+            var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
+            using (var reader = new CsvStreamReader<TestModel>(stream, new CsvStreamOptions() { Wrapper = null }))
+            {
+                var result = reader.AsEnumerable().FirstOrDefault();
+
+                Assert.AreEqual(result.Name, "Claws");
+                Assert.AreEqual(result.Type, TestType.Attachment);
+                Assert.AreEqual(result.Cost, 10);
+                Assert.AreEqual(result.Id, 34.5);
+                Assert.AreEqual(result.Date, DateTime.Parse("03/27/1987"));
+            }
+        }
+
+        [TestMethod]
         public void TestSkipHeaderAndData()
         {
             var stream = StreamHelper.GenerateStream("This is an example message\r\n \r\nname,type,cost,id,date\r\n \r\nThe Data follows this:\r\nClaws,Attachment,10,\"34.5\",03/27/1987");

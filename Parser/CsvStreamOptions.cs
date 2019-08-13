@@ -19,7 +19,7 @@ namespace SimpleCsvParser
         /// <summary>
         /// The data wrapper that is used when the delimiter is part of the data value.
         /// </summary>
-        public char Wrapper { get; set; } = '"';
+        public char? Wrapper { get; set; } = '"';
         /// <summary>
         /// The row delimiter that should be used when breaking up the rows.
         /// </summary>

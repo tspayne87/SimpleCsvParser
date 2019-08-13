@@ -17,7 +17,7 @@ namespace SimpleCsvParser
         /// <param name="rowDelimiter">The row delimiter to determine exceptions.</param>
         /// <param name="emptyColumns">The lamda expression to get empty columns.</param>
         /// <returns></returns>
-        public static List<string> Split(Queue<char> q, string delimiter, char wrapper, string rowDelimiter, Func<int, string> emptyColumns = null)
+        public static List<string> Split(Queue<char> q, string delimiter, char? wrapper, string rowDelimiter, Func<int, string> emptyColumns = null)
         {
             if (q == null) return null;
 

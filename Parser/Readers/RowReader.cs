@@ -17,7 +17,7 @@ namespace SimpleCsvParser.Readers
         /// <summary>
         /// The wrapper we need to use when needing to escape string data.
         /// </summary>
-        private char _wrapper;
+        private char? _wrapper;
 
         /// <summary>
         /// Constructor to build a row from the stream.
@@ -25,7 +25,7 @@ namespace SimpleCsvParser.Readers
         /// <param name="reader">The char reader that needs to be read from.</param>
         /// <param name="delimiter">The delimiter we need to break the char reader up by.</param>
         /// <param name="wrapper">The wrapper we need to use to determine when we need to escape things.</param>
-        public RowReader(CharReader reader, string delimiter, char wrapper)
+        public RowReader(CharReader reader, string delimiter, char? wrapper)
         {
             _reader = reader;
             _delimiter = delimiter;

@@ -24,7 +24,9 @@ namespace SimpleCsvParser
         /// <param name="headers">The headers that should be used to build the objects.</param>
         public CsvConverter(CsvStreamOptions options, List<string> headers = null)
         {
-            if (options.RowDelimiter.IndexOf(options.Wrapper) > -1 || options.RowDelimiter.IndexOf(options.Delimiter) > -1)
+            if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)
+                throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
+            if (options.RowDelimiter.IndexOf(options.Delimiter) > -1)
                 throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
             if (options.Wrapper.ToString() == options.Delimiter)
                 throw new ArgumentException("Wrapper and Delimiter cannot be equal");
