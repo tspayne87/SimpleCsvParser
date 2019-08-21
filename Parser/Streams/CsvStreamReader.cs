@@ -72,7 +72,7 @@ namespace SimpleCsvParser.Streams
         {
             List<string> headers = _options.ParseHeaders ?
                 CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter, emptyColumns) : null;
-            return new CsvConverter(_options, headers);
+            return new CsvConverter(_options, headers, emptyColumns);
         }
 
         internal CsvConverter<TModel> CreateConverter<TModel>()

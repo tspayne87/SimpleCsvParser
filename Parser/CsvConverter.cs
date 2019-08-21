@@ -16,13 +16,18 @@ namespace SimpleCsvParser
         /// The current headers for the converter
         /// </summary>
         protected readonly List<string> _headers;
+        /// <summary>
+        /// The lambda expression to deal with empty columns
+        /// </summary>
+        protected readonly Func<int, string> _emptyColumns;
 
         /// <summary>
         /// Constructor to cache various pieces of the parser to deal with converting to the model given in the generic class.
         /// </summary>
         /// <param name="options">The options this converter should use when building out the objects.</param>
         /// <param name="headers">The headers that should be used to build the objects.</param>
-        public CsvConverter(CsvStreamOptions options, List<string> headers = null)
+        /// <param name="emptyColumns">The lambda expression to deal with empty columns.</param>
+        public CsvConverter(CsvStreamOptions options, List<string> headers = null, Func<int, string> emptyColumns = null)
         {
             if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)
                 throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
@@ -35,6 +40,7 @@ namespace SimpleCsvParser
 
             _options = options;
             _headers = headers;
+            _emptyColumns = emptyColumns;
         }
 
         /// <summary>
@@ -77,9 +83,9 @@ namespace SimpleCsvParser
         public Dictionary<string, string> ToDictionary(List<string> row, long lineNumber)
         {
             var result = new Dictionary<string, string>();
-            for (var i = 0; i < row.Count; ++i)
+            for (var i = 0; i < _headers.Count; ++i)
             {
-                result[GetKey(i)] = row[i];
+                result[GetKey(i)] = row.Count > i ? row[i] : string.Empty;
             }
             return result;
         }
@@ -91,7 +97,7 @@ namespace SimpleCsvParser
         /// <returns>The key we need to use to build out this dictionary.</returns>
         public string GetKey(int i)
         {
-            return _headers.Count > i ? _headers[i] : string.Format("Column{0}", i);
+            return _headers.Count > i ? _headers[i] : (_emptyColumns == null ? string.Format("Column{0}", i) : _emptyColumns(i));
         }
     }
 

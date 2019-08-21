@@ -9,17 +9,17 @@ function generateString(letters) {
 };
 
 function addLine(index) {
-    if (index >= 100000000) {
+    if (index >= 40) {
         console.log('File complete')
         process.exit(0);
     }
 
     var row = [];
-    for (var j = 0; j < 100; ++j) {
+    for (var j = 0; j < 4; ++j) {
         row.push(generateString(Math.floor(Math.random() * 20) + 5));
     }
 
-    fs.appendFile('large.csv', row.join(',') + '\n', function (err) {
+    fs.appendFile('test.csv', row.join(',') + '\r\n', function (err) {
         console.log(`Finished appending line ${index}`);
         addLine(++index);
     });

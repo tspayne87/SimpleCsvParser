@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SimpleCsvParser.Streams;
@@ -175,6 +176,17 @@ namespace SimpleCsvParser.Test
                 Assert.AreEqual(result.Cost, 10);
                 Assert.AreEqual(result.Id, 34.5);
                 Assert.AreEqual(result.Date, DateTime.Parse("03/27/1987"));
+            }
+        }
+
+        [TestMethod]
+        public void TestRowSeperator()
+        {
+            var options = new CsvStreamOptions() {  HeaderRowDelimiter = "\r\n", RowDelimiter = "\r\n" };
+            using (var reader = new CsvDictionaryStreamReader("./test2.csv", options))
+            {
+                var result = reader.AsEnumerable().ToList();
+                Assert.AreEqual(result.Count, 39);
             }
         }
 
