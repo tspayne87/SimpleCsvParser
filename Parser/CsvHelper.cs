@@ -16,8 +16,9 @@ namespace SimpleCsvParser
         /// <param name="wrapper">The wrapper to break apart strings.</param>
         /// <param name="rowDelimiter">The row delimiter to determine exceptions.</param>
         /// <param name="emptyColumns">The lamda expression to get empty columns.</param>
+        /// <param name="allAreEmpty">Switch to determine if we want to ignore if the data is empty and just call them all empty no matter what.</param>
         /// <returns></returns>
-        public static List<string> Split(Queue<char> q, string delimiter, char? wrapper, string rowDelimiter, Func<int, string> emptyColumns = null)
+        public static List<string> Split(Queue<char> q, string delimiter, char? wrapper, string rowDelimiter, Func<int, string> emptyColumns = null, bool allAreEmpty = false)
         {
             if (q == null) return null;
 
@@ -61,7 +62,7 @@ namespace SimpleCsvParser
 
             if (emptyColumns != null)
                 for (var i = 0; i < results.Count; ++i)
-                    if (results[i].Trim().Length == 0)
+                    if (results[i].Trim().Length == 0 || allAreEmpty)
                         results[i] = emptyColumns(i);
 
             return results;

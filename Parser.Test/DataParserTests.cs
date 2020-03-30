@@ -165,6 +165,21 @@ namespace SimpleCsvParser.Test
         }
 
         [TestMethod]
+        public void TestDictionaryNoHeaders()
+        {
+            using (var reader = new CsvDictionaryStreamReader(StreamHelper.GenerateStream("Claws,Effect,10,60.05,9-5-1029"), new CsvStreamOptions() { ParseHeaders = false, DataRow = 0 }))
+            {
+                var result = reader.AsEnumerable(x => $"v{x}").FirstOrDefault();
+
+                Assert.AreEqual(result["v0"], "Claws");
+                Assert.AreEqual(result["v1"], "Effect");
+                Assert.AreEqual(result["v2"], "10");
+                Assert.AreEqual(result["v3"], "60.05");
+                Assert.AreEqual(result["v4"], "9-5-1029");
+            }
+        }
+
+        [TestMethod]
         public void TestNoDefaults()
         {
             using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, RowDelimiter = "\n", HeaderRowDelimiter = "\n" }))

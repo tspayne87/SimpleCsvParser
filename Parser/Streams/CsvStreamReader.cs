@@ -71,7 +71,8 @@ namespace SimpleCsvParser.Streams
         internal CsvConverter CreateConverter(Func<int, string> emptyColumns = null)
         {
             List<string> headers = _options.ParseHeaders ?
-                CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter, emptyColumns) : null;
+                CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter, emptyColumns) :
+                CsvHelper.Split(_rowReader.AsEnumerable().Skip(_options.DataRow).FirstOrDefault(), _options.Delimiter, _options.Wrapper, _options.RowDelimiter, emptyColumns, true);
             return new CsvConverter(_options, headers, emptyColumns);
         }
 

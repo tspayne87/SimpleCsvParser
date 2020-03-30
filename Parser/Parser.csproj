@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>SimpleCsvParser.Core</PackageId>
-    <Version>1.2.3</Version>
+    <Version>1.2.4</Version>
     <Authors>Terry Payne</Authors>
     <Company>Terry Payne</Company>
-    <PackageLicenseUrl>http://opensource.org/licenses/MS-PL</PackageLicenseUrl>
+    <PackageLicense>http://opensource.org/licenses/MS-PL</PackageLicense>
     <PackageProjectUrl>https://github.com/tspayne87/SimpleCsvParser</PackageProjectUrl>
   </PropertyGroup>
 
