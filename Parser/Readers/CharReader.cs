@@ -37,7 +37,7 @@ namespace SimpleCsvParser.Readers
             _stream.Position = 0;
             _reader.DiscardBufferedData();
 
-            char[] buffer = new char[256 * 1024]; // Create a buffer to store the characters loaded from the stream.
+            char[] buffer = new char[4 * 1024]; // Create a buffer to store the characters loaded from the stream.
             int blockIndex;
             while((blockIndex = _reader.Read(buffer, 0, buffer.Length)) > 0)
             {

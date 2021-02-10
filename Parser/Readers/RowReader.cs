@@ -88,12 +88,12 @@ namespace SimpleCsvParser.Readers
                             {
                                 if (queue.Count == 0 || queue.Count == rowBreak.Length)
                                 { // If the builder is the same length as the row delimiter than we can skip this set because it is empty.
-                                    queue = new Queue<char>();
+                                    queue.Clear();
                                     current = iter.Current;
                                     continue;
                                 }
                                 yield return new Queue<char>(queue.Take(queue.Count - rowBreak.Length));
-                                queue = new Queue<char>();
+                                queue.Clear();
                             }
                         }
                         current = iter.Current;

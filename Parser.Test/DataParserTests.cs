@@ -180,6 +180,20 @@ namespace SimpleCsvParser.Test
         }
 
         [TestMethod]
+        public void TestFileDictionaryNoHeaders()
+        {
+            using (var reader = new CsvDictionaryStreamReader("./large-csv.csv", new CsvStreamOptions() { ParseHeaders = false, DataRow = 0 }))
+            {
+                var result = reader.AsEnumerable(x => $"v{x}").FirstOrDefault();
+
+                for (var i = 0; i < result.Count; ++i)
+                {
+                    Assert.AreEqual(result[$"v{i}"], $"Column {i}");
+                }
+            }
+        }
+
+        [TestMethod]
         public void TestNoDefaults()
         {
             using (var reader = new CsvStreamReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamOptions() { AllowDefaults = false, RowDelimiter = "\n", HeaderRowDelimiter = "\n" }))
