@@ -13,10 +13,17 @@ namespace Parser.Performance
     [MemoryDiagnoser]
     public class SimpleParserSuite
     {
+        //[Benchmark]
+        //public void SimpleCSVParser()
+        //{
+        //    CsvParser.ParseFile<DataModel>("PackageAssets.csv", new CsvStreamOptions() { RemoveEmptyEntries = true });
+        //}
+
         [Benchmark]
-        public void SimpleCSVParser()
+        public void SimpleCSVParserEx()
         {
-            CsvParser.ParseFile<DataModel>("PackageAssets.csv", new CsvStreamOptions() { RemoveEmptyEntries = true });
+            using var stream = File.OpenRead("PackageAssets.csv");//consumer should own this stream / who are we to say where they get it from and depending on fs they may need to use different options for accessing fs
+            CsvParser.ParseFile<DataModel>(stream, new CsvStreamOptions() { RemoveEmptyEntries = true });
         }
 
         [Benchmark]

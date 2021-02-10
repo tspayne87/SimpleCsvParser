@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace SimpleCsvParser
@@ -104,11 +105,48 @@ namespace SimpleCsvParser
     internal class CsvConverter<TModel> : CsvConverter
         where TModel : class, new()
     {
-        private readonly IEnumerable<KeyValuePair<PropertyInfo, CsvPropertyAttribute>> _attributes;
+        private class SimpleInfo
+        {
+            public SimpleInfo(PropertyInfo p)
+            {
+                IsNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
+                PropertyType = p.PropertyType;
+                Set = new Action<TModel, object>((model, value) => p.SetValue(model, value));//TODO: make generic
+                Default = GetDefaultValue(p.PropertyType);
+            }
+            public bool IsNullable;
+            public Action<TModel, Object> Set;
+            public Type PropertyType;
+            public object Default;
+
+            /// <summary>
+            /// Method is meant to get the default value for the specific type.
+            /// </summary>
+            /// <param name="type">The type we need to get a default for.</param>
+            /// <returns>The default object we need for the type given.</returns>
+            private static object GetDefaultValue(Type type)
+            {
+                switch (Type.GetTypeCode(type))
+                {
+                    case TypeCode.String:
+                        return string.Empty;
+                    case TypeCode.DateTime:
+                        return DateTime.MinValue;
+                    case TypeCode.Object:
+                    case TypeCode.DBNull:
+                        throw new ArgumentException($"{type.Name} cannot generate default value.");
+                    default:
+                        return Activator.CreateInstance(type);
+                }
+            }
+
+        }
+
+        private readonly KeyValuePair<PropertyInfo, CsvPropertyAttribute>[] _attributes;
         /// <summary>
         /// The collection of props built from the model bound to this class.
         /// </summary>
-        private readonly IEnumerable<KeyValuePair<int, PropertyInfo>> _props;
+        private readonly KeyValuePair<int, SimpleInfo>[] _props;
 
         /// <summary>
         /// Constructor to cache various pieces of the parser to deal with converting to the model given in the generic class.
@@ -123,15 +161,19 @@ namespace SimpleCsvParser
                 .Where(prop => Attribute.IsDefined(prop, typeof(CsvPropertyAttribute)))
                 .Select(x => new KeyValuePair<PropertyInfo, CsvPropertyAttribute>(x, x.GetCustomAttribute<CsvPropertyAttribute>(true)))
                 .OrderBy(x => x.Value.ColIndex)
-                .ThenBy(x => x.Value.Header);
+                .ThenBy(x => x.Value.Header)
+                .ToArray();
 
             _props = _attributes
-                .Select(x => {
-                    if (string.IsNullOrEmpty(x.Value.Header)) return new KeyValuePair<int, PropertyInfo>(x.Value.ColIndex, x.Key);
+                .Select(x =>
+                {
+                    if (string.IsNullOrEmpty(x.Value.Header))
+                        return new KeyValuePair<int, SimpleInfo>(x.Value.ColIndex, new SimpleInfo(x.Key));
                     else return headers == null ?
-                        new KeyValuePair<int, PropertyInfo>(-1, x.Key)
-                        : new KeyValuePair<int, PropertyInfo>(headers.IndexOf(x.Value.Header), x.Key);
-                });
+                        new KeyValuePair<int, SimpleInfo>(-1, new SimpleInfo(x.Key))
+                        : new KeyValuePair<int, SimpleInfo>(headers.IndexOf(x.Value.Header), new SimpleInfo(x.Key));
+                })
+                .ToArray();
         }
 
         /// <summary>
@@ -203,32 +245,35 @@ namespace SimpleCsvParser
         public TModel Parse(List<string> row, long lineNumber)
         {
             var result = new TModel();
-            foreach (var prop in _props)
+            //foreach (var prop in _props)
+            for (int i = 0; i < _props.Length; i++)
             {
+                var prop = _props[i];
                 if (prop.Key > -1 && prop.Key < row.Count)
                 {
-                    if (prop.Value.PropertyType.IsGenericType && prop.Value.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                    if (!prop.Value.IsNullable)
                     {
-                        if ((string.IsNullOrEmpty(row[prop.Key]) || row[prop.Key] == "null"))
+                        if (!string.IsNullOrEmpty(row[prop.Key]))
                         {
-                            if (string.IsNullOrEmpty(row[prop.Key]) && !_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
-                            prop.Value.SetValue(result, null);
+                            prop.Value.Set(result, GetConvertedValue(prop.Value.PropertyType, row[prop.Key]));
                         }
                         else
                         {
-                            prop.Value.SetValue(result, GetConvertedValue(Nullable.GetUnderlyingType(prop.Value.PropertyType), row[prop.Key]));
+                            if (!_options.AllowDefaults)
+                                throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
+                            prop.Value.Set(result, prop.Value.Default);
                         }
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(row[prop.Key]))
+                        if ((string.IsNullOrEmpty(row[prop.Key]) || row[prop.Key] == "null"))
                         {
-                            if (!_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
-                            prop.Value.SetValue(result, GetDefaultValue(prop.Value.PropertyType));
+                            if (string.IsNullOrEmpty(row[prop.Key]) && !_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
+                            prop.Value.Set(result, null);
                         }
                         else
                         {
-                            prop.Value.SetValue(result, GetConvertedValue(prop.Value.PropertyType, row[prop.Key]));
+                            prop.Value.Set(result, GetConvertedValue(Nullable.GetUnderlyingType(prop.Value.PropertyType), row[prop.Key]));
                         }
                     }
                 }
@@ -236,13 +281,14 @@ namespace SimpleCsvParser
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         /// <summary>
         /// Method is meant to convert the string value into the strict type that csharp expects on the model.
         /// </summary>
         /// <param name="type">The type that the property is using.</param>
         /// <param name="item">The item that needs to be converted to the type above.</param>
-        /// <returns>Will return an object that is the converted type.</returns>
-        private object GetConvertedValue(Type type, string item)
+        /// <returns>Will return an object that is the converted type.</returns>       
+        private static object GetConvertedValue(Type type, string item)
         {
             if (type.IsEnum) return Enum.Parse(type, item);
             switch (Type.GetTypeCode(type))
@@ -255,28 +301,7 @@ namespace SimpleCsvParser
                 case TypeCode.DBNull:
                     throw new ArgumentException($"{type.Name} cannot convert value.");
                 default:
-                    return Convert.ChangeType(item, type);
-            }
-        }
-
-        /// <summary>
-        /// Method is meant to get the default value for the specific type.
-        /// </summary>
-        /// <param name="type">The type we need to get a default for.</param>
-        /// <returns>The default object we need for the type given.</returns>
-        private object GetDefaultValue(Type type)
-        {
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.String:
-                    return string.Empty;
-                case TypeCode.DateTime:
-                    return DateTime.MinValue;
-                case TypeCode.Object:
-                case TypeCode.DBNull:
-                    throw new ArgumentException($"{type.Name} cannot generate default value.");
-                default:
-                    return Activator.CreateInstance(type);
+                    return Convert.ChangeType(item, type);//TODO: this could be improved
             }
         }
     }
