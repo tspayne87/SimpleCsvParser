@@ -1,3 +1,4 @@
+using Parser.Readers;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -8,7 +9,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using SimpleCsvParser.Readers;
 
 namespace SimpleCsvParser.Streams
 {
@@ -21,11 +21,11 @@ namespace SimpleCsvParser.Streams
         /// <summary>
         /// The reader we will be getting data from.
         /// </summary>
-        internal readonly RowReader _rowReader;
+        internal readonly PipelineReader _rowReader;
         /// <summary>
         /// The reader we will be using to get the header information.
         /// </summary>
-        internal readonly RowReader _headerReader;
+        internal readonly PipelineReader _headerReader;
         /// <summary>
         /// The stream that we need to dispose.
         /// </summary>
@@ -63,26 +63,26 @@ namespace SimpleCsvParser.Streams
         {
             _options = options;
             _stream = stream;
-            _rowReader = new RowReader(new CharReader(_stream), _options.RowDelimiter, _options.Wrapper);
-            _headerReader = new RowReader(new CharReader(_stream), _options.HeaderRowDelimiter, _options.Wrapper);
+            _rowReader = new PipelineReader(_stream, _options.RowDelimiter, _options.Wrapper);
+            _headerReader = new PipelineReader(_stream, _options.HeaderRowDelimiter, _options.Wrapper);
         }
         #endregion
 
-        internal CsvConverter CreateConverter(Func<int, string> emptyColumns = null)
-        {
-            List<string> headers = _options.ParseHeaders ?
-                CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter, emptyColumns) :
-                CsvHelper.Split(_rowReader.AsEnumerable().Skip(_options.DataRow).FirstOrDefault(), _options.Delimiter, _options.Wrapper, _options.RowDelimiter, emptyColumns, true);
-            return new CsvConverter(_options, headers, emptyColumns);
-        }
+        //internal CsvConverter CreateConverter(Func<int, string> emptyColumns = null)
+        //{
+        //    List<string> headers = _options.ParseHeaders ?
+        //        CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter, emptyColumns) :
+        //        CsvHelper.Split(_rowReader.AsEnumerable().Skip(_options.DataRow).FirstOrDefault(), _options.Delimiter, _options.Wrapper, _options.RowDelimiter, emptyColumns, true);
+        //    return new CsvConverter(_options, headers, emptyColumns);
+        //}
 
-        internal CsvConverter<TModel> CreateConverter<TModel>()
-            where TModel: class, new()
-        {
-            List<string> headers = _options.ParseHeaders ?
-                CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter) : null;
-            return new CsvConverter<TModel>(_options, headers);
-        }
+        //internal CsvConverter<TModel> CreateConverter<TModel>()
+        //    where TModel: class, new()
+        //{
+        //    List<string> headers = _options.ParseHeaders ?
+        //        CsvHelper.Split(_headerReader.AsEnumerable().Skip(_options.HeaderRow).FirstOrDefault(), _options.HeaderDelimiter, _options.Wrapper, _options.HeaderRowDelimiter) : null;
+        //    return new CsvConverter<TModel>(_options, headers);
+        //}
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls

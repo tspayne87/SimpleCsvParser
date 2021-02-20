@@ -7,7 +7,7 @@ using System.Text;
 
 namespace SimpleCsvParser
 {
-    internal class CsvConverter
+    public class CsvConverter //TODO: back to internal
     {
         /// <summary>
         /// Special options needed to determine what should be done with the parser.
@@ -102,7 +102,7 @@ namespace SimpleCsvParser
         }
     }
 
-    internal class CsvConverter<TModel> : CsvConverter
+    public class CsvConverter<TModel> : CsvConverter//TODO: back to internal
         where TModel : class, new()
     {
         private class SimpleInfo
@@ -235,6 +235,7 @@ namespace SimpleCsvParser
             return line.ToString();
         }
 
+
         /// <summary>
         /// Method is meant to parse the rows collected from the csv file and turn the into the objects requested.
         /// </summary>
@@ -242,7 +243,59 @@ namespace SimpleCsvParser
         /// <param name="rows">The data rows we need to process from the create the objects.</param>
         /// <typeparam name="TModel">The models we will be generating.</typeparam>
         /// <returns>A list of models that was requested.</returns>
-        public TModel Parse(List<string> row, long lineNumber)
+        public TModel Parse(ReadOnlySpan<byte> span, int lineNumber)
+        {
+            var delimiterBytes = UTF8Encoding.UTF8.GetBytes(_options.Delimiter);
+            var delimiterLen = _options.Delimiter.Length;
+            var spanIdx = 0;
+            var result = new TModel();
+
+            for (int i = 0; i < _props.Length; i++)
+            {
+                var colEndIdx = span.IndexOf(delimiterBytes);
+                //TODO: end of buffer w/o idx possible here
+                
+                var strVal = UTF8Encoding.UTF8.GetString(span.Slice(spanIdx, colEndIdx - spanIdx));
+                var prop = _props[i];
+
+                if (!prop.Value.IsNullable)
+                {
+                    if (!string.IsNullOrEmpty(strVal))
+                    {
+                        prop.Value.Set(result, GetConvertedValue(prop.Value.PropertyType, strVal));
+                    }
+                    else
+                    {
+                        if (!_options.AllowDefaults)
+                            throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
+                        prop.Value.Set(result, prop.Value.Default);
+                    }
+                }
+                else
+                {
+                    if ((string.IsNullOrEmpty(strVal) || strVal == "null"))
+                    {
+                        if (string.IsNullOrEmpty(strVal) && !_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
+                        prop.Value.Set(result, null);
+                    }
+                    else
+                    {
+                        prop.Value.Set(result, GetConvertedValue(Nullable.GetUnderlyingType(prop.Value.PropertyType), strVal));
+                    }
+                }
+            }
+            return result;
+        }
+
+
+        /// <summary>
+        /// Method is meant to parse the rows collected from the csv file and turn the into the objects requested.
+        /// </summary>
+        /// <param name="headers">The headers we should be using to parse on based on attributes.</param>
+        /// <param name="rows">The data rows we need to process from the create the objects.</param>
+        /// <typeparam name="TModel">The models we will be generating.</typeparam>
+        /// <returns>A list of models that was requested.</returns>
+        public TModel Parse(IList<string> row, long lineNumber)
         {
             var result = new TModel();
             //foreach (var prop in _props)
@@ -304,5 +357,7 @@ namespace SimpleCsvParser
                     return Convert.ChangeType(item, type);//TODO: this could be improved
             }
         }
+
+
     }
 }

@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using SimpleCsvParser.Readers;
 
 namespace SimpleCsvParser.Streams
 {
@@ -54,35 +53,35 @@ namespace SimpleCsvParser.Streams
         public IEnumerable<TModel> AsEnumerable()
         {
             var converter = CreateConverter<TModel>();
-            return _rowReader.AsEnumerable()
-                .Skip(_options.DataRow)
-                .Select((row, index) => {
-                    var splitRow = CsvHelper.Split(row, _options.Delimiter, _options.Wrapper, _options.RowDelimiter);
-                    if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
-                        return converter.Parse(splitRow, index);
-                    return null;
-                })
-                .Where(x => x != null);
+            return _rowReader.AsEnumerable(converter, _options);
+                //.Skip()
+                //.Select((row, index) => {
+                //    var splitRow = CsvHelper.Split(row, _options.Delimiter, _options.Wrapper, _options.RowDelimiter);
+                //    if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
+                //        return converter.Parse(splitRow, index);
+                //    return null;
+                //})
+                //.Where(x => x != null);
         }
 
-        /// <summary>
-        /// Helper method that will convert the streams into a list of char characters based on each of the rows.
-        /// </summary>
-        /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
-        public ParallelQuery<TModel> AsParallel()
-        {
-            var converter = CreateConverter<TModel>();
-            return _rowReader.AsEnumerable()
-                .Skip(_options.DataRow)
-                .AsParallel()
-                .AsOrdered()
-                .Select((row, index) => {
-                    var splitRow = CsvHelper.Split(row, _options.Delimiter, _options.Wrapper, _options.RowDelimiter);
-                    if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
-                        return converter.Parse(splitRow, index);
-                    return null;
-                })
-                .Where(x => x != null);
-        }
+        ///// <summary>
+        ///// Helper method that will convert the streams into a list of char characters based on each of the rows.
+        ///// </summary>
+        ///// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
+        //public ParallelQuery<TModel> AsParallel()
+        //{
+        //    var converter = CreateConverter<TModel>();
+        //    return _rowReader.AsEnumerable()
+        //        .Skip(_options.DataRow)
+        //        .AsParallel()
+        //        .AsOrdered()
+        //        .Select((row, index) => {
+        //            var splitRow = CsvHelper.Split(row, _options.Delimiter, _options.Wrapper, _options.RowDelimiter);
+        //            if (!_options.RemoveEmptyEntries || splitRow.Where(x => !string.IsNullOrEmpty(x)).Count() != 0)
+        //                return converter.Parse(splitRow, index);
+        //            return null;
+        //        })
+        //        .Where(x => x != null);
+        //}
     }
 }
