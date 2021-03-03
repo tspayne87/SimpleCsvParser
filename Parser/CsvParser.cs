@@ -7,67 +7,67 @@ namespace SimpleCsvParser
 {
     public static class CsvParser
     {
-        /// <summary>
-        /// Method is meant to parse a csv string.
-        /// </summary>
-        /// <param name="csv">The csv string that needs to be parsed.</param>
-        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
-        /// <returns>The list of objects that the parser comes back at.</returns>
-        public static List<TModel> Parse<TModel>(string csv)
-            where TModel : class, new()
-        {
-            return Parse<TModel>(csv, new CsvStreamOptions());
-        }
+        ///// <summary>
+        ///// Method is meant to parse a csv string.
+        ///// </summary>
+        ///// <param name="csv">The csv string that needs to be parsed.</param>
+        ///// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        ///// <returns>The list of objects that the parser comes back at.</returns>
+        //public static List<TModel> Parse<TModel>(string csv)
+        //    where TModel : class, new()
+        //{
+        //    return Parse<TModel>(csv, new CsvStreamOptions());
+        //}
 
-        /// <summary>
-        /// Method is meant to parse a csv string.
-        /// </summary>
-        /// <param name="csv">The csv string that needs to be parsed.</param>
-        /// <param name="options">The options that should be sent off to the stream.</param>
-        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
-        /// <returns>The list of objects that the parser comes back at.</returns>
-        public static List<TModel> Parse<TModel>(string csv, CsvStreamOptions options)
-            where TModel : class, new()
-        {
-            using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv), options))
-            {
-                return reader.AsEnumerable().ToList();
-            }
-        }
+        ///// <summary>
+        ///// Method is meant to parse a csv string.
+        ///// </summary>
+        ///// <param name="csv">The csv string that needs to be parsed.</param>
+        ///// <param name="options">The options that should be sent off to the stream.</param>
+        ///// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        ///// <returns>The list of objects that the parser comes back at.</returns>
+        //public static List<TModel> Parse<TModel>(string csv, CsvStreamOptions options)
+        //    where TModel : class, new()
+        //{
+        //    using (var reader = new CsvStreamReader<TModel>(GenerateStream(csv), options))
+        //    {
+        //        return reader.AsEnumerable().ToList();
+        //    }
+        //}
 
-        /// <summary>
-        /// Method is meant to deal with reading csv files from the system.
-        /// </summary>
-        /// <param name="path">The file path to the csv file that needs to be parsed.</param>
-        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
-        /// <returns>The list of objects that the parser comes back at.</returns>
-        public static List<TModel> ParseFile<TModel>(string path)
-            where TModel : class, new()
-        {
-            return ParseFile<TModel>(path, new CsvStreamOptions());
-        }
+        ///// <summary>
+        ///// Method is meant to deal with reading csv files from the system.
+        ///// </summary>
+        ///// <param name="path">The file path to the csv file that needs to be parsed.</param>
+        ///// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        ///// <returns>The list of objects that the parser comes back at.</returns>
+        //public static List<TModel> ParseFile<TModel>(string path)
+        //    where TModel : class, new()
+        //{
+        //    return ParseFile<TModel>(path, new CsvStreamOptions());
+        //}
 
-        /// <summary>
-        /// Method is meant to deal with reading csv files from the system.
-        /// </summary>
-        /// <param name="path">The file path to the csv file that needs to be parsed.</param>
-        /// <param name="options">The options that should be sent off to the stream.</param>
-        /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
-        /// <returns>The list of objects that the parser comes back at.</returns>
-        public static List<TModel> ParseFile<TModel>(string path, CsvStreamOptions options)
-            where TModel : class, new()
-        {
-            using (var reader = new CsvStreamReader<TModel>(path, options))
-            {
-                return reader.AsEnumerable().ToList();
-            }
-        }
+        ///// <summary>
+        ///// Method is meant to deal with reading csv files from the system.
+        ///// </summary>
+        ///// <param name="path">The file path to the csv file that needs to be parsed.</param>
+        ///// <param name="options">The options that should be sent off to the stream.</param>
+        ///// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
+        ///// <returns>The list of objects that the parser comes back at.</returns>
+        //public static List<TModel> ParseFile<TModel>(string path, CsvStreamOptions options)
+        //    where TModel : class, new()
+        //{
+        //    using (var reader = new CsvStreamReader<TModel>(path, options))
+        //    {
+        //        return reader.AsEnumerable().ToList();
+        //    }
+        //}
 
-        public static List<TModel> ParseFile<TModel>(Stream stream, CsvStreamOptions csvStreamOptions)
-     where TModel : class, new()
+        public static IAsyncEnumerable<TModel> ParseFile<TModel>(Stream stream, CsvStreamOptions csvStreamOptions)
+            where TModel : class, new()
         {
             using var reader = new CsvStreamReader<TModel>(stream, csvStreamOptions);
-            return reader.AsEnumerable().ToList();
+            return reader.AsEnumerable();
         }
 
 

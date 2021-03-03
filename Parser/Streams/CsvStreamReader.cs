@@ -27,7 +27,7 @@ namespace SimpleCsvParser.Streams
         /// </summary>
         internal readonly PipelineReader _headerReader;
         /// <summary>
-        /// The stream that we need to dispose.
+        /// The stream that we may need to dispose.
         /// </summary>
         private Stream _stream;
 
@@ -44,7 +44,7 @@ namespace SimpleCsvParser.Streams
         /// </summary>
         /// <param name="path">The file path that we need to create a stream from.</param>
         public CsvStreamReader(string path)
-            : this(File.Open(path, FileMode.Open, FileAccess.Read), new CsvStreamOptions()) { }
+            : this(File.Open(path, FileMode.Open, FileAccess.Read), new CsvStreamOptions() { CloseStream = false }) { }
 
         /// <summary>
         /// Constructor that will deal with files and convert them into a stream.
@@ -66,6 +66,7 @@ namespace SimpleCsvParser.Streams
             _rowReader = new PipelineReader(_stream, _options.RowDelimiter, _options.Wrapper);
             _headerReader = new PipelineReader(_stream, _options.HeaderRowDelimiter, _options.Wrapper);
         }
+
         #endregion
 
         //internal CsvConverter CreateConverter(Func<int, string> emptyColumns = null)
@@ -93,9 +94,12 @@ namespace SimpleCsvParser.Streams
         /// <param name="disposing">If we are needing to dispose the object.</param>
         protected virtual void Dispose(bool disposing)
         {
+            //TODO: Justin says we should consider moving this to options. Callers may have their own plans for the stream; 
+            // not sure we should force close it on them espeically nondeterministally. However, if we created the stream ourselves 
+            // then sure, we're responsible for it
             if (!disposedValue)
             {
-                if (disposing)
+                if (disposing && _options.CloseStream)
                 {
                     _stream.Dispose();
                 }

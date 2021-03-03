@@ -52,5 +52,11 @@ namespace SimpleCsvParser
         /// </summary>
         /// <value></value>
         public int DataRow { get; set; } = 1;
+
+        /// <summary>
+        /// Automatically close stream after prasing csv.
+        /// </summary>
+        /// <value></value>
+        public bool CloseStream { get; set; } = true;
     }
 }

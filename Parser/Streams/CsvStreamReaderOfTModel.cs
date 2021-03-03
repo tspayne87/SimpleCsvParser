@@ -50,10 +50,9 @@ namespace SimpleCsvParser.Streams
         /// Helper method that will convert the streams into a list of char characters based on each of the rows.
         /// </summary>
         /// <returns>Will return an enumerable list of char arrays represented by the row of characters.</returns>
-        public IEnumerable<TModel> AsEnumerable()
+        public IAsyncEnumerable<TModel> AsEnumerable()
         {
-            var converter = CreateConverter<TModel>();
-            return _rowReader.AsEnumerable(converter, _options);
+            return _rowReader.AsEnumerable(new CsvConverter<TModel>(base._options), _options);
                 //.Skip()
                 //.Select((row, index) => {
                 //    var splitRow = CsvHelper.Split(row, _options.Delimiter, _options.Wrapper, _options.RowDelimiter);
