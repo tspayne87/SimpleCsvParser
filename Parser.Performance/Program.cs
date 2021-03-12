@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using BenchmarkDotNet.Running;
 using Parser.Performance;
 using BenchmarkDotNet.Configs;
+using System.Threading.Tasks;
 
 namespace SimpleCsvParser.Performance
 {
@@ -13,7 +14,7 @@ namespace SimpleCsvParser.Performance
     {
         private static string file = "PackageAssets.csv";
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             IConfig config = null;
 #if DEBUG

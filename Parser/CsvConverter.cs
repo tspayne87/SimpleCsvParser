@@ -147,6 +147,9 @@ namespace SimpleCsvParser
         /// The collection of props built from the model bound to this class.
         /// </summary>
         private readonly KeyValuePair<int, SimpleInfo>[] _props;
+        byte[] DelimiterBytes;
+        Char[] DelimiterChars;
+        //int DelimiterLen;
 
         /// <summary>
         /// Constructor to cache various pieces of the parser to deal with converting to the model given in the generic class.
@@ -174,6 +177,9 @@ namespace SimpleCsvParser
                         : new KeyValuePair<int, SimpleInfo>(headers.IndexOf(x.Value.Header), new SimpleInfo(x.Key));
                 })
                 .ToArray();
+            DelimiterBytes = UTF8Encoding.UTF8.GetBytes(options.Delimiter);
+            DelimiterChars = options.Delimiter.ToCharArray();
+            //DelimiterLen = options.Delimiter.Length;
         }
 
         /// <summary>
@@ -245,22 +251,31 @@ namespace SimpleCsvParser
         /// <returns>A list of models that was requested.</returns>
         public TModel Parse(ReadOnlySpan<byte> span, int lineNumber)
         {
-            var delimiterBytes = UTF8Encoding.UTF8.GetBytes(_options.Delimiter);
-            var delimiterLen = _options.Delimiter.Length;
-            var spanIdx = 0;
             var result = new TModel();
+            Span<char> chars = stackalloc char[span.Length];
+            var charSpan = UTF8Encoding.UTF8.GetChars(span, chars);//TODO: prbably allocates so remove
 
             for (int i = 0; i < _props.Length; i++)
             {
-                var colEndIdx = span.IndexOf(delimiterBytes);
-                //TODO: end of buffer w/o idx possible here
-                
-                var strVal = UTF8Encoding.UTF8.GetString(span.Slice(spanIdx, colEndIdx - spanIdx));
                 var prop = _props[i];
+
+                var colEndIdx = chars.IndexOf(DelimiterChars);    ;
+
+                Span<char> strVal = chars;// colEndIdx == -1 ? chars : chars.Slice(0, colEndIdx);
+                if (colEndIdx < 0)
+                {
+                    strVal = chars;
+                }
+                else
+                {
+                    strVal = chars.Slice(0, colEndIdx);
+                    chars = chars.Slice(colEndIdx + 1);
+                }
+
 
                 if (!prop.Value.IsNullable)
                 {
-                    if (!string.IsNullOrEmpty(strVal))
+                    if (!strVal.IsEmpty)
                     {
                         prop.Value.Set(result, GetConvertedValue(prop.Value.PropertyType, strVal));
                     }
@@ -273,9 +288,9 @@ namespace SimpleCsvParser
                 }
                 else
                 {
-                    if ((string.IsNullOrEmpty(strVal) || strVal == "null"))
+                    if (strVal.IsEmpty || strVal.IndexOf("null") == 0)
                     {
-                        if (string.IsNullOrEmpty(strVal) && !_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
+                        if (strVal.IsEmpty && !_options.AllowDefaults) throw new MalformedException($"Default value in line {lineNumber} does not contain a value.");
                         prop.Value.Set(result, null);
                     }
                     else
@@ -341,20 +356,34 @@ namespace SimpleCsvParser
         /// <param name="type">The type that the property is using.</param>
         /// <param name="item">The item that needs to be converted to the type above.</param>
         /// <returns>Will return an object that is the converted type.</returns>       
-        private static object GetConvertedValue(Type type, string item)
+        private static object GetConvertedValue(Type type, ReadOnlySpan<char> item)
         {
-            if (type.IsEnum) return Enum.Parse(type, item);
+            if (type.IsEnum) return Enum.Parse(type, new string(item));//TODO: we could redo this w/o allocation
             switch (Type.GetTypeCode(type))
             {
                 case TypeCode.String:
-                    return item;
+                    return new string(item);
                 case TypeCode.DateTime:
                     return DateTime.Parse(item);
+                case TypeCode.Int32:
+                    return int.Parse(item);
+                case TypeCode.Int64:
+                    return long.Parse(item);
+                case TypeCode.Int16:
+                    return short.Parse(item);
+                case TypeCode.Double:
+                    return double.Parse(item);
+                case TypeCode.Decimal:
+                    return decimal.Parse(item);
+                case TypeCode.Single:
+                    return float.Parse(item);
+                case TypeCode.Boolean:
+                    return bool.Parse(item);
                 case TypeCode.Object:
                 case TypeCode.DBNull:
                     throw new ArgumentException($"{type.Name} cannot convert value.");
                 default:
-                    return Convert.ChangeType(item, type);//TODO: this could be improved
+                    return Convert.ChangeType(new string(item), type);//TODO: this could be improved
             }
         }
 

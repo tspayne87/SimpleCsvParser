@@ -140,7 +140,7 @@ namespace Parser.Readers
         {
             stream.Seek(0, SeekOrigin.Begin);
             var reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
-            List<TModel> dumbList = new List<TModel>();
+            TModel[] dumbList = new TModel[512];
             while (true)
             {
                 ReadResult result = await reader.ReadAsync().ConfigureAwait(false);
@@ -158,10 +158,10 @@ namespace Parser.Readers
 
 
 
-                ProcessRows(ref buffer, converter, dumbList);
-                for (int i = 0; i < dumbList.Count; i++)
+                var rCount =ProcessRows(ref buffer, converter, dumbList);
+                for (int i = 0; i < rCount; i++)
                     yield return dumbList[i];
-                dumbList.Clear();
+                //dumbList.Clear();
 
 
 
@@ -189,8 +189,9 @@ namespace Parser.Readers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ProcessRows<TModel>(ref ReadOnlySequence<byte> buffer, CsvConverter<TModel> converter, List<TModel> dumbList) where TModel : class, new()
+        private int ProcessRows<TModel>(ref ReadOnlySequence<byte> buffer, CsvConverter<TModel> converter, TModel[] dumbList) where TModel : class, new()
         {
+            int resultCount = 0;
             if (buffer.IsSingleSegment)
             {
                 var span = buffer.FirstSpan;
@@ -203,7 +204,7 @@ namespace Parser.Readers
 
                     var line = span.Slice(0, newLine);
 
-                    dumbList.Add(converter.Parse(line, ++_counter));
+                    dumbList[resultCount++]=converter.Parse(line, ++_counter);
 
                     consumed = line.Length + NewLine.Length;
                     span = span.Slice(consumed);
@@ -220,13 +221,14 @@ namespace Parser.Readers
                     {
                             Span<byte> bytes = stackalloc byte[(int)line.Length];
                             line.CopyTo(bytes);
-                            dumbList.Add(converter.Parse(bytes, ++_counter));
+                        dumbList[resultCount++] = converter.Parse(bytes, ++_counter);
                     }
 
                     buffer = buffer.Slice(sequenceReader.Position);
                     sequenceReader.Advance(buffer.Length);
                 }
             }
+            return resultCount;
         }
     }
 }
