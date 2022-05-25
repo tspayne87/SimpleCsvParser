@@ -70,9 +70,9 @@ namespace SimpleCsvParser.Streams
 
         #endregion
 
-        public IEnumerable<List<string>> Parse()
+        public void Parse(Action<List<string>> rowHandler, CancellationToken? cancellationToken)
         {
-            return _reader.Parse();
+            _reader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
         }
 
         #region IDisposable Support

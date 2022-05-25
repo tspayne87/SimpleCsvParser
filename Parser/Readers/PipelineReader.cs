@@ -5,6 +5,7 @@ using System.IO;
 using SimpleCsvParser.Processors;
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Parser.Readers
 {
@@ -31,7 +32,7 @@ namespace Parser.Readers
             _singleWrap = _options.Wrapper.Value.ToString();
         }
 
-        internal IEnumerable<T> Parse()
+        internal void Parse(Action<T> rowHandler, CancellationToken cancellationToken)
         {
             _stream.Seek(0, SeekOrigin.Begin);
             using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
@@ -75,13 +76,20 @@ namespace Parser.Readers
                         {
                             AddColumn(overflow, buffer, start, i);
                             if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
-                                yield return _processor.GetObject();
+                            {
+                                rowHandler(_processor.GetObject());
+                                if (cancellationToken.IsCancellationRequested)
+                                    break;
+                            }
                             _processor.ClearObject();
                         }
                         i += lenRowDelimiter - 1;
                         start = i + 1;
                     }
                 }
+
+                if (cancellationToken.IsCancellationRequested)
+                    break;
 
                 overflow.Append(buffer, start, bufferLength - start);
                 start = 0;
@@ -97,7 +105,7 @@ namespace Parser.Readers
                         _processor.AddColumn(overflow.ToString());
                 }
                 if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
-                    yield return _processor.GetObject();
+                    rowHandler(_processor.GetObject());
                 _processor.ClearObject();
             }
         }

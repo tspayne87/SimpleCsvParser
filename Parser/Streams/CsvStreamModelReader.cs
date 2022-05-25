@@ -5,11 +5,12 @@ using System.Linq;
 using SimpleCsvParser.Options;
 using SimpleCsvParser.Processors;
 using Parser.Readers;
+using System.Threading;
 
 namespace SimpleCsvParser.Streams
 {
     public class CsvStreamModelReader<TModel> : IDisposable
-        where TModel: class, new()
+        where TModel : class, new()
     {
         /// <summary>
         /// The reader we will be getting data from.
@@ -90,16 +91,35 @@ namespace SimpleCsvParser.Streams
                 RemoveEmptyEntries = _options.RemoveEmptyEntries,
                 StartRow = _options.StartRow
             };
-            _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(_options.IgnoreHeaders ? null : _headerReader.Parse().First()));
+            if (!_options.IgnoreHeaders)
+            {
+                var ct = new CancellationTokenSource();
+                var headers= new List<string>();
+                
+                _headerReader.Parse(row => {
+                    headers = row;
+                    ct.Cancel();//only read the first row
+                },ct.Token);
+
+                _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(headers));
+            }
+            else
+                _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(null));
         }
 
-        /// <summary>
-        /// Parse the data and return an enumerable for all the objects
-        /// </summary>
-        public IEnumerable<TModel> Parse()
+        ///// <summary>
+        ///// Parse the data and return an enumerable for all the objects
+        ///// </summary>
+        //public IEnumerable<TModel> Parse()
+        //{
+        //    if (_rowReader == null) throw new ArgumentNullException("Call Load Headers Before Parsing");
+        //    return _rowReader.Parse();
+        //}
+
+        public void Parse(Action<TModel> rowHandler, CancellationToken cancellationToken)
         {
             if (_rowReader == null) throw new ArgumentNullException("Call Load Headers Before Parsing");
-            return _rowReader.Parse();
+            _rowReader.Parse(rowHandler, cancellationToken);
         }
 
         #region IDisposable Support

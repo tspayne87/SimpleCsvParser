@@ -2,6 +2,7 @@
 using SimpleCsvParser.Streams;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 
 namespace Parser.Performance
 {
@@ -15,11 +16,17 @@ namespace Parser.Performance
       using (var reader = new CsvStreamModelReader<DataModel>(stream))
       {
         reader.LoadHeaders();
-        var records = reader.Parse();
-        foreach (var record in records)
+                var ct = new CancellationTokenSource();
+        reader.Parse(row =>
         {
-          ;//NOOP
-        }
+            ;
+            if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
+                ct.Cancel();
+        },ct.Token);
+        //foreach (var record in records)
+        //{
+        //  ;//NOOP
+        //}
       }
     }
 
