@@ -43,7 +43,9 @@ namespace Parser.Readers
             char firstRowDelimiter = _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
             char firstDelimiter = _options.Delimiter[0];        // Grab the first character from the delimiter since it is much faster to check char to char
             uint row = 0;// The current row we are working on
-          
+
+            int lenRowDelimiter = _options.RowDelimiter.Length;
+            int lenColDelimiter = _options.Delimiter.Length;
 
             while ((bufferLength = reader.Read(buffer, 0, buffer.Length)) > 0)
             {
@@ -62,12 +64,12 @@ namespace Parser.Readers
                     if (inWrapper)
                         continue;
 
-                    if (row >= _options.StartRow && firstDelimiter == buffer[i] && (_options.Delimiter.Length == 1 || _options.Delimiter.EqualsCharArray(buffer, i, i + _options.Delimiter.Length)))
+                    if (row >= _options.StartRow && firstDelimiter == buffer[i] && (lenColDelimiter == 1 || _options.Delimiter.EqualsCharArray(buffer, i, i + lenColDelimiter)))
                     {
                         AddColumn(overflow, buffer, start, i);
-                        start = i + _options.Delimiter.Length;
+                        start = i + lenColDelimiter;
                     }
-                    else if (firstRowDelimiter == buffer[i] && (_options.RowDelimiter.Length == 1 || _options.RowDelimiter.EqualsCharArray(buffer, i, i + _options.RowDelimiter.Length)))
+                    else if (firstRowDelimiter == buffer[i] && (lenRowDelimiter == 1 || _options.RowDelimiter.EqualsCharArray(buffer, i, i + lenRowDelimiter)))
                     {
                         if (row++ >= _options.StartRow)
                         {
@@ -76,7 +78,7 @@ namespace Parser.Readers
                                 yield return _processor.GetObject();
                             _processor.ClearObject();
                         }
-                        i += _options.RowDelimiter.Length - 1;
+                        i += lenRowDelimiter - 1;
                         start = i + 1;
                     }
                 }
