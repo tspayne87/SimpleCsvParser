@@ -97,7 +97,7 @@ namespace Parser.Readers
             }
         }
 
-       
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddColumn(StringBuilder overflow, char[] buffer, int start, int i)
         {
             if (_options.Wrapper != null && buffer[start] == _options.Wrapper.Value)
