@@ -29,12 +29,12 @@ namespace SimpleCsvParser
         /// <param name="options">The options that should be sent off to the stream.</param>
         /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
         /// <returns>The list of objects that the parser comes back at.</returns>
-        public static void Parse<TModel>(string csv, CsvStreamReaderWithHeaderOptions options, Action<TModel> rowHandler)
+        public static void Parse<TModel>(string csv, CsvStreamReaderWithHeaderOptions options, Action<TModel> rowHandler, CancellationToken? cancellationToken = null)
            where TModel : class, new()
         {
             using var reader = new CsvStreamModelReader<TModel>(GenerateStream(csv), options);
             reader.LoadHeaders();
-            reader.Parse(rowHandler, CancellationToken.None);
+            reader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
         }
 
         /// <summary>

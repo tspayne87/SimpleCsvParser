@@ -70,7 +70,7 @@ namespace SimpleCsvParser.Streams
 
         #endregion
 
-        public void Parse(Action<List<string>> rowHandler, CancellationToken? cancellationToken)
+        public void Parse(Action<List<string>> rowHandler, CancellationToken? cancellationToken = null)
         {
             _reader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
         }

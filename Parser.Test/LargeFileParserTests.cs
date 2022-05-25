@@ -8,17 +8,17 @@ using SimpleCsvParser.Options;
 
 namespace SimpleCsvParser.Test
 {
-  [TestClass]
-  public class LargeFileParserTests
-  {
-    [TestMethod]
-    public void ProcessLargeFile()
+    [TestClass]
+    public class LargeFileParserTests
     {
-      using var reader = new CsvStreamModelReader<LargeModel>("large.csv", new CsvStreamReaderWithHeaderOptions() { IgnoreHeaders = true, RowDelimiter = "\n", StartRow = 1 });
-      reader.LoadHeaders(); 
-      var count = 0;
-      foreach (var item in reader.Parse())
-        count++;
+        [TestMethod]
+        public void ProcessLargeFile()
+        {
+            using var reader = new CsvStreamModelReader<LargeModel>("large.csv", new CsvStreamReaderWithHeaderOptions() { IgnoreHeaders = true, RowDelimiter = "\n", StartRow = 1 });
+            reader.LoadHeaders();
+            var count = 0;
+
+            reader.Parse(row => count++);
+        }
     }
-  }
 }

@@ -94,12 +94,13 @@ namespace SimpleCsvParser.Streams
             if (!_options.IgnoreHeaders)
             {
                 var ct = new CancellationTokenSource();
-                var headers= new List<string>();
-                
-                _headerReader.Parse(row => {
+                var headers = new List<string>();
+
+                _headerReader.Parse(row =>
+                {
                     headers = row;
                     ct.Cancel();//only read the first row
-                },ct.Token);
+                }, ct.Token);
 
                 _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(headers));
             }
@@ -116,10 +117,10 @@ namespace SimpleCsvParser.Streams
         //    return _rowReader.Parse();
         //}
 
-        public void Parse(Action<TModel> rowHandler, CancellationToken cancellationToken)
+        public void Parse(Action<TModel> rowHandler, CancellationToken? cancellationToken = null)
         {
             if (_rowReader == null) throw new ArgumentNullException("Call Load Headers Before Parsing");
-            _rowReader.Parse(rowHandler, cancellationToken);
+            _rowReader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
         }
 
         #region IDisposable Support
