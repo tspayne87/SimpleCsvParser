@@ -56,6 +56,18 @@ namespace SimpleCsvParser.Test
     }
 
     [TestMethod]
+    public void TestWithEmptyDelimiter()
+    {
+      var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
+      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { Wrapper = null, Delimiter = string.Empty });
+      var result = reader.Parse().ToList();
+
+      Assert.AreEqual(2, result.Count);
+      Assert.AreEqual("name,type,cost,id,date", result[0][0]);
+      Assert.AreEqual("Claws,Attachment,10,34.5,03/27/1987", result[1][0]);
+    }
+
+    [TestMethod]
     public void TestSkipHeaderAndData()
     {
       var stream = StreamHelper.GenerateStream("This is an example message\r\n \r\nname,type,cost,id,date\r\n \r\nThe Data follows this:\r\nClaws,Attachment,10,\"34.5\",03/27/1987");
