@@ -3,11 +3,16 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <PackageId>SimpleCsvParser.Core</PackageId>
-    <Version>1.2.4</Version>
+    <LangVersion>9.0</LangVersion>
+    <Version>2.0.0</Version>
     <Authors>Terry Payne</Authors>
     <Company>Terry Payne</Company>
     <PackageLicense>http://opensource.org/licenses/MS-PL</PackageLicense>
     <PackageProjectUrl>https://github.com/tspayne87/SimpleCsvParser</PackageProjectUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
+  </ItemGroup>
 
 </Project>
