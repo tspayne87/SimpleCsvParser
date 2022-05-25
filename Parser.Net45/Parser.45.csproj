@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
     <PackageId>SimpleCsvParser</PackageId>
-    <Version>1.2.4</Version>
+    <Version>2.0.0</Version>
     <Authors>Terry Payne</Authors>
     <Company>Terry Payne</Company>
     <PackageLicense>http://opensource.org/licenses/MS-PL</PackageLicense>

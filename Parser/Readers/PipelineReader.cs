@@ -1,234 +1,115 @@
 ﻿using SimpleCsvParser;
-using System;
-using System.Buffers;
+using System.Text;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipelines;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using SimpleCsvParser.Processors;
+using System;
 
 namespace Parser.Readers
 {
-    internal class PipelineReader
+  internal class PipelineReader<T>
+      where T : class, new()
+  {
+    private Stream _stream;
+    private IObjectProcessor<T> _processor;
+    private ParseOptions _options;
+
+    public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
     {
-        private static ReadOnlySpan<byte> NewLine => new[] { (byte)'\r', (byte)'\n' }; //TODO: this is windows newline only
-
-        private Stream stream;
-        private string rowDelimiter;
-        private char? wrapper;
-        private int _counter = 0;
-
-        public PipelineReader(Stream stream, string rowDelimiter, char? wrapper)
-        {
-            this.stream = stream;
-            this.rowDelimiter = rowDelimiter;
-            this.wrapper = wrapper;
-        }
-
-        //public async Task<string> ReadLineUsingPipelineVer2Async()
-        ////{
-        ////    _stream.Seek(0, SeekOrigin.Begin);
-
-        ////    var reader = PipeReader.Create(_stream, new StreamPipeReaderOptions(leaveOpen: true));
-        ////    string str;
-
-        ////    while (true)
-        ////    {
-        ////        ReadResult result = await reader.ReadAsync();
-        ////        ReadOnlySequence<byte> buffer = result.Buffer;
-
-        ////        str = ProcessLine(ref buffer);
-
-        ////        reader.AdvanceTo(buffer.Start, buffer.End);
-
-        ////        if (result.IsCompleted) break;
-        ////    }
-
-        ////    await reader.CompleteAsync();
-        ////    return str;
-        ////}
-
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //private static TModel ProcessLine<TModel>(ref ReadOnlySequence<byte> buffer, CsvConverter<TModel> converter) where TModel : class, new()
-        //{
-        //    TModel model = default;
-
-        //    if (buffer.IsSingleSegment)
-        //    {
-        //        var span = buffer.FirstSpan;
-        //        int consumed;
-        //        while (span.Length > 0)
-        //        {
-        //            var rowEnd = span.IndexOf(NewLine);
-        //            if (rowEnd == -1) 
-        //                break;
-        //            var row = span.Slice(0, rowEnd);
-
-        //            consumed = row.Length + NewLine.Length;
-        //            span = span.Slice(consumed);
-        //            buffer = buffer.Slice(consumed);
-
-        //            return converter.Parse(row, -1);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        var sequenceReader = new SequenceReader<byte>(buffer);
-
-        //        while (!sequenceReader.End)
-        //        {
-        //            while (sequenceReader.TryReadTo(out var line, NewLine))
-        //            {
-        //                //str = Encoding.UTF8.GetString(line.ToArray());//TODO: we don't need this in .net 5 and it is wasting mem
-        //                //// simulate string processing
-        //                //str = str.AsSpan().Slice(0, 5).ToString();
-        //                //var row = span.Slice(0, rowEnd);
-        //                //return converter.Parse(line., -1);
-        //            }
-
-        //            buffer = buffer.Slice(sequenceReader.Position);
-        //            sequenceReader.Advance(buffer.Length);
-        //            return default;
-        //        }
-        //    }
-        //    return default;
-        //    //throw new Exception("oops there it is");
-        //}
-
-        //internal async IAsyncEnumerable<TModel> AsEnumerable<TModel>(CsvConverter<TModel> converter, CsvStreamOptions options) where TModel : class, new()
-        //{
-        //    stream.Seek(0, SeekOrigin.Begin);
-        //    //var converter = new CsvConverter<TModel>(options);
-        //    var reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
-
-        //    TModel currentModel = new TModel();
-        //    while (true)//looping over chunks of bytes
-        //    {
-        //        ReadResult result = await reader.ReadAsync();
-        //        ReadOnlySequence<byte> buffer = result.Buffer;
-
-        //        var eol = buffer.PositionOf((byte)'\n');
-        //        for(int i=0; i < buffer.Length; i++)
-        //        {
-        //            //loops through buffer one char at a time;
-        //            //TODO: probably faster to to register size at a time eg 64 bits
-        //           if(buffer.)
-        //        }
-
-        //        //str = xx;
-        //        yield return ProcessLine(ref buffer, converter);
-        //        //yield return new TModel();
-
-        //        reader.AdvanceTo(buffer.Start, buffer.End);
-
-        //        if (result.IsCompleted) 
-        //            break;
-        //    }
-
-        //    await reader.CompleteAsync();
-        //}
-
-
-
-
-
-
-
-
-        internal async IAsyncEnumerable<TModel> AsEnumerable<TModel>(CsvConverter<TModel> converter, CsvStreamOptions options) where TModel : class, new()
-        {
-            stream.Seek(0, SeekOrigin.Begin);
-            var reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
-            TModel[] dumbList = new TModel[512];
-            while (true)
-            {
-                ReadResult result = await reader.ReadAsync().ConfigureAwait(false);
-                ReadOnlySequence<byte> buffer = result.Buffer;
-
-
-
-
-
-
-
-
-
-
-
-
-
-                var rCount =ProcessRows(ref buffer, converter, dumbList);
-                for (int i = 0; i < rCount; i++)
-                    yield return dumbList[i];
-                //dumbList.Clear();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                reader.AdvanceTo(buffer.Start, buffer.End);
-                if (result.IsCompleted) break;
-            }
-
-            //await Task.WhenAll(_tasks).ConfigureAwait(false);
-
-            await reader.CompleteAsync().ConfigureAwait(false);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int ProcessRows<TModel>(ref ReadOnlySequence<byte> buffer, CsvConverter<TModel> converter, TModel[] dumbList) where TModel : class, new()
-        {
-            int resultCount = 0;
-            if (buffer.IsSingleSegment)
-            {
-                var span = buffer.FirstSpan;
-                int consumed;
-                while (span.Length > 0)
-                {
-                    var newLine = span.IndexOf(NewLine);
-
-                    if (newLine == -1) break;
-
-                    var line = span.Slice(0, newLine);
-
-                    dumbList[resultCount++]=converter.Parse(line, ++_counter);
-
-                    consumed = line.Length + NewLine.Length;
-                    span = span.Slice(consumed);
-                    buffer = buffer.Slice(consumed);
-                }
-            }
-            else
-            {
-                var sequenceReader = new SequenceReader<byte>(buffer);
-
-                while (!sequenceReader.End)
-                {
-                    while (sequenceReader.TryReadTo(out ReadOnlySequence<byte> line, NewLine))
-                    {
-                            Span<byte> bytes = stackalloc byte[(int)line.Length];
-                            line.CopyTo(bytes);
-                        dumbList[resultCount++] = converter.Parse(bytes, ++_counter);
-                    }
-
-                    buffer = buffer.Slice(sequenceReader.Position);
-                    sequenceReader.Advance(buffer.Length);
-                }
-            }
-            return resultCount;
-        }
+      if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)
+        throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
+      if (options.RowDelimiter.IndexOf(options.Delimiter) > -1)
+        throw new ArgumentException("Row delimiter cannot contain a value from Wrapper or Delimiter");
+      if (options.Wrapper.ToString() == options.Delimiter)
+        throw new ArgumentException("Wrapper and Delimiter cannot be equal");
+
+      _stream = stream;
+      _processor = processor;
+      _options = options;
     }
+
+    internal IEnumerable<T> Parse()
+    {
+      _stream.Seek(0, SeekOrigin.Begin);
+      using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
+      char[] buffer = new char[4 * 1024];                 // Create a buffer to store the characters loaded from the stream.
+      StringBuilder overflow = new StringBuilder();       // The overflow buffer to catch anything that was added before
+      int bufferLength;                                   // The current buffer length, the start of the column the end of the column
+      int start = 0;                                      // The current starting position of the column
+      bool inWrapper = false;                             // If we are currently in a wrapper or not
+      char firstRowDelimiter = _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
+      char firstDelimiter = _options.Delimiter[0];        // Grab the first character from the delimiter since it is much faster to check char to char
+      uint row = 0;                                       // The current row we are working on
+
+      while ((bufferLength = reader.Read(buffer, 0, buffer.Length)) > 0)
+      {
+        start = 0;
+        for (int i = 0; i < bufferLength; ++i)
+        {
+          if (_options.Wrapper != null && _options.Wrapper.Value == buffer[i])
+          {
+            if (inWrapper && (i + 1 >= bufferLength || buffer[i + 1] != _options.Wrapper.Value))
+              inWrapper = false;
+            else if (inWrapper && (i + 1 >= bufferLength || buffer[i + 1] == _options.Wrapper.Value))
+              i++;
+            else if (!inWrapper)
+              inWrapper = true;
+          }
+          if (inWrapper) continue;
+
+          if (row >= _options.StartRow && firstDelimiter == buffer[i] && (_options.Delimiter.Length == 1 || _options.Delimiter.EqualsCharArray(buffer, i, i + _options.Delimiter.Length)))
+          {
+            AddColumn(overflow, buffer, start, i);
+            start = i + _options.Delimiter.Length;
+          }
+          else if (firstRowDelimiter == buffer[i] && (_options.RowDelimiter.Length == 1 || _options.RowDelimiter.EqualsCharArray(buffer, i, i + _options.RowDelimiter.Length)))
+          {
+            if (row++ >= _options.StartRow)
+            {
+              AddColumn(overflow, buffer, start, i);
+              if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
+                yield return _processor.GetObject();
+              _processor.ClearObject();
+            }
+            i += _options.RowDelimiter.Length - 1;
+            start = i + 1;
+          }
+        }
+
+        overflow.Append(buffer, start, bufferLength - start);
+        start = 0;
+      }
+
+      if (row++ >= _options.StartRow)
+      {
+        if (overflow.Length > 0)
+        {
+          if (_options.Wrapper != null && overflow.Length > 0 && overflow[0] == _options.Wrapper.Value)
+            _processor.AddColumn(overflow.Replace($"{_options.Wrapper.Value}{_options.Wrapper.Value}", $"{_options.Wrapper.Value}").ToString(1, overflow.Length - 2));
+          else
+            _processor.AddColumn(overflow.ToString());
+        }
+        if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
+          yield return _processor.GetObject();
+        _processor.ClearObject();
+      }
+    }
+
+    private void AddColumn(StringBuilder overflow, char[] buffer, int start, int i)
+    {
+      if (_options.Wrapper != null && buffer[start] == _options.Wrapper.Value)
+      {
+        if (buffer != null)
+          overflow.Append(buffer, start + 1, i - start - 2);
+        _processor.AddColumn(overflow.Replace($"{_options.Wrapper.Value}{_options.Wrapper.Value}", $"{_options.Wrapper.Value}").ToString());
+      }
+      else
+      {
+        if (buffer != null)
+          overflow.Append(buffer, start, i - start);
+        _processor.AddColumn(overflow.ToString());
+      }
+      overflow.Clear();
+    }
+  }
 }

@@ -9,7 +9,7 @@ namespace SimpleCsvParser.Test
         [CsvProperty("type", 2)]
         public TestType Type { get; set; }
         [CsvProperty("cost", 3)]
-        public int Cost { get; set; }
+        public int? Cost { get; set; }
         [CsvProperty("id", 4)]
         public Double Id { get; set; }
         [CsvProperty("date", 5)]

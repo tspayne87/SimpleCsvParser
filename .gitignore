@@ -35,3 +35,4 @@ msbuild.wrn
 nuget-commands.txt
 large.csv
 medium.csv
+BenchmarkDotNet.Artifacts
