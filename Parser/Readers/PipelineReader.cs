@@ -14,7 +14,7 @@ namespace Parser.Readers
         private Stream _stream;
         private IObjectProcessor<T> _processor;
         private ParseOptions _options;
-
+        private string _doubleWrap, _singleWrap;
         public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
         {
             if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)
@@ -27,6 +27,8 @@ namespace Parser.Readers
             _stream = stream;
             _processor = processor;
             _options = options;
+            _doubleWrap = $"{_options.Wrapper.Value}{_options.Wrapper.Value}";
+            _singleWrap = _options.Wrapper.Value.ToString();
         }
 
         internal IEnumerable<T> Parse()
@@ -40,7 +42,8 @@ namespace Parser.Readers
             bool inWrapper = false;                             // If we are currently in a wrapper or not
             char firstRowDelimiter = _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
             char firstDelimiter = _options.Delimiter[0];        // Grab the first character from the delimiter since it is much faster to check char to char
-            uint row = 0;                                       // The current row we are working on
+            uint row = 0;// The current row we are working on
+          
 
             while ((bufferLength = reader.Read(buffer, 0, buffer.Length)) > 0)
             {
@@ -87,7 +90,7 @@ namespace Parser.Readers
                 if (overflow.Length > 0)
                 {
                     if (_options.Wrapper != null && overflow.Length > 0 && overflow[0] == _options.Wrapper.Value)
-                        _processor.AddColumn(overflow.Replace($"{_options.Wrapper.Value}{_options.Wrapper.Value}", $"{_options.Wrapper.Value}").ToString(1, overflow.Length - 2));
+                        _processor.AddColumn(overflow.Replace(_doubleWrap, _singleWrap).ToString(1, overflow.Length - 2));
                     else
                         _processor.AddColumn(overflow.ToString());
                 }
@@ -97,14 +100,14 @@ namespace Parser.Readers
             }
         }
 
-        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddColumn(StringBuilder overflow, char[] buffer, int start, int i)
         {
             if (_options.Wrapper != null && buffer[start] == _options.Wrapper.Value)
             {
                 if (buffer != null)
                     overflow.Append(buffer, start + 1, i - start - 2);
-                _processor.AddColumn(overflow.Replace($"{_options.Wrapper.Value}{_options.Wrapper.Value}", $"{_options.Wrapper.Value}").ToString());
+                _processor.AddColumn(overflow.Replace(_doubleWrap, _singleWrap).ToString());
             }
             else
             {
