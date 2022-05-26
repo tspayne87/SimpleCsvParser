@@ -4,51 +4,61 @@ using System.Linq;
 
 namespace SimpleCsvParser.Processors
 {
-  /// <summary>
-  /// The processor meant to handle each column being added to the object being created
-  /// </summary>
-  internal class ListStringProcessor : IObjectProcessor<List<string>>
-  {
     /// <summary>
-    /// The internal result used to store data into
+    /// The processor meant to handle each column being added to the object being created
     /// </summary>
-    private List<string> _result = new List<string>();
-
-    /// <summary>
-    /// Boolean to determine if a column has been set or not
-    /// </summary>
-    private bool _isAColumnSet = false;
-
-    /// <inheritdoc />
-    public void AddColumn(string str)
+    internal class ListStringProcessor : IObjectProcessor<IList<string>>
     {
-      _result.Add(str);
-      _isAColumnSet = true;
-    }
 
-    /// <inheritdoc />
-    public bool IsEmpty()
-    {
-      return _result.Where(x => !string.IsNullOrWhiteSpace(x)).Count() == 0;
-    }
+        private string[] _result = default;
+        private int _colIndex = 0;
+        private int _colCount;
+        /// <summary>
+        /// Boolean to determine if a column has been set or not
+        /// </summary>
+        private bool _isAColumnSet = false;
 
-    /// <inheritdoc />
-    public bool IsAColumnSet()
-    {
-      return _isAColumnSet;
-    }
+        public ListStringProcessor(int numCols)
+        {
+            _result = new string[numCols];
+            _colCount = numCols;
+        }
 
-    /// <inheritdoc />
-    public List<string> GetObject()
-    {
-      return _result.GetRange(0, _result.Count);
-    }
+        /// <inheritdoc />
+        public void AddColumn(string str)
+        {
+            _result[_colIndex++] = str;
+            _isAColumnSet = true;
+        }
 
-    /// <inheritdoc />
-    public void ClearObject()
-    {
-      _result.Clear();
-      _isAColumnSet = false;
+        /// <inheritdoc />
+        public bool IsEmpty()
+        {
+            for (int i = 0; i < _colIndex; i++)
+                if (!String.IsNullOrWhiteSpace(_result[i]))
+                    return false;
+            return true;
+        }
+
+        /// <inheritdoc />
+        public bool IsAColumnSet()
+        {
+            return _isAColumnSet;
+        }
+
+        /// <inheritdoc />
+        public IList<string> GetObject()
+        {
+            var returnable = new string[_colCount];
+            _result.AsSpan().CopyTo(returnable);
+            return returnable;
+        }
+
+        /// <inheritdoc />
+        public void ClearObject()
+        {
+            _colIndex = 0;
+            _isAColumnSet = false;
+        }
     }
-  }
 }
