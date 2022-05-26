@@ -65,7 +65,7 @@ namespace SimpleCsvParser.Streams
                 RemoveEmptyEntries = options.RemoveEmptyEntries,
                 StartRow = options.StartRow
             };
-            _reader = new PipelineReader<List<string>>(_stream, parseOptions, new ListStringProcessor());
+            _reader = new PipelineReader<List<string>>(_stream, parseOptions, new ListStringProcessor(parseOptions.Wrapper ?? default));
         }
 
         #endregion

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using System.Text;
 
 namespace SimpleCsvParser.Processors
 {
@@ -19,11 +20,35 @@ namespace SimpleCsvParser.Processors
     /// </summary>
     private bool _isAColumnSet = false;
 
-    /// <inheritdoc />
-    public void AddColumn(string str)
+    private char _wrapper;
+
+    private string _doubleWrap, _singleWrap;
+
+    public ListStringProcessor(char wrapper)
     {
-      _result.Add(str);
-      _isAColumnSet = true;
+      _wrapper = wrapper;
+      _doubleWrap = $"{_wrapper}{_wrapper}";
+      _singleWrap = $"{_wrapper}";
+    }
+
+
+    /// <inheritdoc />
+    public void AddColumn(ReadOnlySpan<char> str)
+    {
+      if (str.Length > 0)
+      {
+        if (str[0] == _wrapper)
+          _result.Add(new string(str.Slice(1, str.Length - 2)).Clean(_doubleWrap, _singleWrap));
+        else
+          _result.Add(new string(str).Clean(_doubleWrap, _singleWrap));
+        _isAColumnSet = true;
+      }
+    }
+
+    /// <inheritdoc />
+    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow)
+    {
+      AddColumn(overflow.MergeSpan(str));
     }
 
     /// <inheritdoc />

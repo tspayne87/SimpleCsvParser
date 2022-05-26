@@ -37,20 +37,27 @@ namespace Parser.Readers
     {
       _stream.Seek(0, SeekOrigin.Begin);
       using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
-      Span<char> buffer = new Span<char>(new char[4 * 1024]);               // Create a buffer to store the characters loaded from the stream.
-      StringBuilder overflow = new StringBuilder();       // The overflow buffer to catch anything that was added before
-      int bufferLength;                                   // The current buffer length, the start of the column the end of the column
-      int start = 0;                                      // The current starting position of the column
-      bool inWrapper = false;                             // If we are currently in a wrapper or not
+      Span<char> buffer = new Span<char>(new char[4 * 1024]);                                                     // Create a buffer to store the characters loaded from the stream.
+      int bufferLength;                                                                                           // The current buffer length, the start of the column the end of the column
+      int start = 0;                                                                                              // The current starting position of the column
+      bool inWrapper = false;                                                                                     // If we are currently in a wrapper or not
       char firstRowDelimiter = string.IsNullOrEmpty(_options.RowDelimiter) ? default : _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
       char firstDelimiter = string.IsNullOrEmpty(_options.Delimiter) ? default : _options.Delimiter[0];           // Grab the first character from the delimiter since it is much faster to check char to char
       uint row = 0;                                                                                               // The current row we are working on
+      ReadOnlySpan<char> delimiterSpan = _options.Delimiter.AsSpan();
+      ReadOnlySpan<char> rowDelimiterSpan = _options.RowDelimiter.AsSpan();
 
-      int lenRowDelimiter = _options.RowDelimiter.Length;
-      int lenColDelimiter = _options.Delimiter.Length;
+      Span<char> overflow = new Span<char>(new char[1024]);
+      int overflowLength = 0;
+
+      int lenRowDelimiter = rowDelimiterSpan.Length;
+      int lenColDelimiter = delimiterSpan.Length;
 
       while ((bufferLength = reader.Read(buffer)) > 0)
       {
+        if (cancellationToken.IsCancellationRequested)
+          break;
+
         start = 0;
         for (int i = 0; i < bufferLength; ++i)
         {
@@ -66,16 +73,28 @@ namespace Parser.Readers
           if (inWrapper)
             continue;
 
-          if (row >= _options.StartRow && firstDelimiter == buffer[i] && (lenColDelimiter == 1 || _options.Delimiter.EqualsCharArray(buffer, i, i + lenColDelimiter)))
+          if (firstDelimiter == buffer[i] && row >= _options.StartRow && (lenColDelimiter == 1 || delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter)))
           {
-            AddColumn(overflow, buffer, start, i);
+            if (overflowLength > 0)
+            {
+              AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i);
+              overflowLength = 0;
+            }
+            else
+              AddColumn(buffer, start, i);
             start = i + lenColDelimiter;
           }
-          else if (firstRowDelimiter == buffer[i] && (lenRowDelimiter == 1 || _options.RowDelimiter.EqualsCharArray(buffer, i, i + lenRowDelimiter)))
+          else if (firstRowDelimiter == buffer[i] && (lenRowDelimiter == 1 || rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter)))
           {
             if (row++ >= _options.StartRow)
             {
-              AddColumn(overflow, buffer, start, i);
+              if (overflowLength > 0)
+              {
+                AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i);
+                overflowLength = 0;
+              }
+              else
+                AddColumn(buffer, start, i);
               if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
               {
                 rowHandler(_processor.GetObject());
@@ -92,19 +111,17 @@ namespace Parser.Readers
         if (cancellationToken.IsCancellationRequested)
           break;
 
-        overflow.Append(buffer.Slice(start, bufferLength - start));
-        start = 0;
+        if (start < bufferLength)
+        {
+          buffer.Slice(start, bufferLength - start).CopyTo(overflow);
+          overflowLength = bufferLength - start;
+        }
       }
 
-      if (row++ >= _options.StartRow)
+      if (!cancellationToken.IsCancellationRequested && row++ >= _options.StartRow)
       {
-        if (overflow.Length > 0)
-        {
-          if (overflow[0] == _wrapper)
-            _processor.AddColumn(overflow.Replace(_doubleWrap, _singleWrap).ToString(1, overflow.Length - 2));
-          else
-            _processor.AddColumn(overflow.ToString());
-        }
+        if (overflowLength > 0)
+          _processor.AddColumn(overflow.Slice(0, overflowLength));
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
           rowHandler(_processor.GetObject());
         _processor.ClearObject();
@@ -112,21 +129,19 @@ namespace Parser.Readers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumn(StringBuilder overflow, ReadOnlySpan<char> buffer, int start, int i)
+    private void AddColumn(ReadOnlySpan<char> buffer, int start, int i)
     {
-      if (buffer[start] == _wrapper)
-      {
-        if (buffer != null)
-          overflow.Append(buffer.Slice(start + 1, i - start - 2));
-        _processor.AddColumn(overflow.Replace(_doubleWrap, _singleWrap).ToString());
-      }
+      if (buffer == null) return;
+      _processor.AddColumn(buffer.Slice(start, i - start));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AddColumnWithOverflow(ReadOnlySpan<char> overflow, ReadOnlySpan<char> buffer, int start, int i)
+    {
+      if (buffer == null)
+        _processor.AddColumn(overflow);
       else
-      {
-        if (buffer != null)
-          overflow.Append(buffer.Slice(start, i - start));
-        _processor.AddColumn(overflow.ToString());
-      }
-      overflow.Clear();
+        _processor.AddColumn(buffer.Slice(start, i - start), overflow);
     }
   }
 }

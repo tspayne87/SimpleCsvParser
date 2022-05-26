@@ -1,3 +1,5 @@
+using System;
+
 namespace SimpleCsvParser.Processors
 {
    /// <summary>
@@ -6,7 +8,9 @@ namespace SimpleCsvParser.Processors
    internal interface IObjectProcessor<T>
       where T : class, new()
    {
-     void AddColumn(string str);
+     void AddColumn(ReadOnlySpan<char> str);
+
+     void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow);
 
      bool IsEmpty();
 
