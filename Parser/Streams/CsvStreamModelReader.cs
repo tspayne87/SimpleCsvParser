@@ -85,8 +85,8 @@ namespace SimpleCsvParser.Streams
         {
             var rowOptions = new ParseOptions()
             {
-                Delimiter = _options.Delimiter,
-                Wrapper = _options.Wrapper,
+                Delimiter = _options.ColumnDelimiter,
+                Wrapper = _options.EscapeChar,
                 RowDelimiter = _options.RowDelimiter,
                 RemoveEmptyEntries = _options.RemoveEmptyEntries,
                 StartRow = _options.StartRow
