@@ -8,13 +8,11 @@ namespace SimpleCsvParser.Processors
   /// <summary>
   /// The processor meant to handle each column being added to the object being created
   /// </summary>
-  internal class ListStringProcessor : IObjectProcessor<List<string>>
+  internal class ListStringProcessor : IObjectProcessor<IList<string>>
   {
-    /// <summary>
-    /// The internal result used to store data into
-    /// </summary>
-    private List<string> _result = new List<string>();
-
+    private string[] _result = default;
+    private int _colIndex = 0;
+    private int _colCount;
     /// <summary>
     /// Boolean to determine if a column has been set or not
     /// </summary>
@@ -24,8 +22,10 @@ namespace SimpleCsvParser.Processors
 
     private string _doubleWrap, _singleWrap;
 
-    public ListStringProcessor(char wrapper)
+    public ListStringProcessor(char wrapper, int numCols)
     {
+      _result = new string[numCols];
+      _colCount = numCols;
       _wrapper = wrapper;
       _doubleWrap = $"{_wrapper}{_wrapper}";
       _singleWrap = $"{_wrapper}";
@@ -38,10 +38,14 @@ namespace SimpleCsvParser.Processors
       if (str.Length > 0)
       {
         if (str[0] == _wrapper)
-          _result.Add(new string(str.Slice(1, str.Length - 2)).Clean(_doubleWrap, _singleWrap));
+          _result[_colIndex++] = new string(str.Slice(1, str.Length - 2)).Clean(_doubleWrap, _singleWrap);
         else
-          _result.Add(new string(str).Clean(_doubleWrap, _singleWrap));
+          _result[_colIndex++] = new string(str).Clean(_doubleWrap, _singleWrap);
         _isAColumnSet = true;
+      }
+      else
+      {
+        _result[_colIndex++] = string.Empty;
       }
     }
 
@@ -54,7 +58,10 @@ namespace SimpleCsvParser.Processors
     /// <inheritdoc />
     public bool IsEmpty()
     {
-      return _result.Where(x => !string.IsNullOrWhiteSpace(x)).Count() == 0;
+      for (int i = 0; i < _colIndex; i++)
+        if (!String.IsNullOrWhiteSpace(_result[i]))
+          return false;
+      return true;
     }
 
     /// <inheritdoc />
@@ -64,15 +71,17 @@ namespace SimpleCsvParser.Processors
     }
 
     /// <inheritdoc />
-    public List<string> GetObject()
+    public IList<string> GetObject()
     {
-      return _result.GetRange(0, _result.Count);
+      var returnable = new string[_colCount];
+      _result.AsSpan().CopyTo(returnable);
+      return returnable;
     }
 
     /// <inheritdoc />
     public void ClearObject()
     {
-      _result.Clear();
+      _colIndex = 0;
       _isAColumnSet = false;
     }
   }
