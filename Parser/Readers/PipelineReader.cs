@@ -36,7 +36,7 @@ namespace Parser.Readers
         {
             _stream.Seek(0, SeekOrigin.Begin);
             using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
-            char[] buffer = new char[4 * 1024];                 // Create a buffer to store the characters loaded from the stream.
+            Span<char> buffer = new Span<char>(new char[4 * 1024]);               // Create a buffer to store the characters loaded from the stream.
             StringBuilder overflow = new StringBuilder();       // The overflow buffer to catch anything that was added before
             int bufferLength;                                   // The current buffer length, the start of the column the end of the column
             int start = 0;                                      // The current starting position of the column
@@ -48,7 +48,7 @@ namespace Parser.Readers
             int lenRowDelimiter = _options.RowDelimiter.Length;
             int lenColDelimiter = _options.Delimiter.Length;
 
-            while ((bufferLength = reader.Read(buffer, 0, buffer.Length)) > 0)
+            while ((bufferLength = reader.Read(buffer)) > 0)
             {
                 start = 0;
                 for (int i = 0; i < bufferLength; ++i)
@@ -91,7 +91,7 @@ namespace Parser.Readers
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                overflow.Append(buffer, start, bufferLength - start);
+                overflow.Append(buffer.Slice(start, bufferLength - start));
                 start = 0;
             }
 
@@ -111,18 +111,18 @@ namespace Parser.Readers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddColumn(StringBuilder overflow, char[] buffer, int start, int i)
+        private void AddColumn(StringBuilder overflow, ReadOnlySpan<char> buffer, int start, int i)
         {
             if (_options.Wrapper != null && buffer[start] == _options.Wrapper.Value)
             {
                 if (buffer != null)
-                    overflow.Append(buffer, start + 1, i - start - 2);
+                    overflow.Append(buffer.Slice(start + 1, i - start - 2));
                 _processor.AddColumn(overflow.Replace(_doubleWrap, _singleWrap).ToString());
             }
             else
             {
                 if (buffer != null)
-                    overflow.Append(buffer, start, i - start);
+                    overflow.Append(buffer.Slice(start, i - start));
                 _processor.AddColumn(overflow.ToString());
             }
             overflow.Clear();

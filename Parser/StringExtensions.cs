@@ -4,7 +4,7 @@ namespace SimpleCsvParser
 {
   internal static class StringExtensions
   {
-    public static bool EqualsCharArray(this string str, char[] buffer, int start, int end)
+    public static bool EqualsCharArray(this string str, ReadOnlySpan<char> buffer, int start, int end)
     {
       if (start < 0 || str.Length != end - start) return false;
       for (var i = 0; i < str.Length; ++i)
