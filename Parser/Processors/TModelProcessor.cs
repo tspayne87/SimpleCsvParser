@@ -74,15 +74,15 @@ namespace SimpleCsvParser.Processors
     }
 
     /// <inheritdoc />
-    public void AddColumn(ReadOnlySpan<char> str)
+    public void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper)
     {
-      if (_props.Length > _index && _props[_index] != null && str.Length > 0)
+      PropertyLookup item;
+      if (_props.Length > _index && (item = _props[_index]) != null && str.Length > 0)
       {
-        var item = _props[_index];
-        if (str[0] == _wrapper)
-          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap));
+        if (hasWrapper)
+          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
         else
-          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap));
+          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
         _isNotSet = false;
       }
       _index++;
@@ -90,9 +90,9 @@ namespace SimpleCsvParser.Processors
     }
 
     /// <inheritdoc />
-    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow)
+    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper)
     {
-      AddColumn(overflow.MergeSpan(str));
+      AddColumn(overflow.MergeSpan(str), hasWrapper, hasDoubleWrapper);
     }
 
     /// <inheritdoc />

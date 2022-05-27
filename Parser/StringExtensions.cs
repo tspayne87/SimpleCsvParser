@@ -28,14 +28,14 @@ namespace SimpleCsvParser
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object CastToValue(this ReadOnlySpan<char> str, TypeCode typeCode, Type type, bool isNullable, bool isEnum, string doubleWrap, string singleWrap)
+    public static object CastToValue(this ReadOnlySpan<char> str, TypeCode typeCode, Type type, bool isNullable, bool isEnum, string doubleWrap, string singleWrap, bool hasDoubleWrapper)
     {
       if (isNullable && str == "null") return null;
 
       if (isEnum) return Enum.Parse(type, new string(str));
       switch (typeCode)
       {
-        case TypeCode.String: return new string(str).Clean(doubleWrap, singleWrap);
+        case TypeCode.String: return hasDoubleWrapper ? new string(str).Clean(doubleWrap, singleWrap) : new string(str);
         case TypeCode.DateTime: return DateTime.Parse(str);
         case TypeCode.Int16: return short.Parse(str);
         case TypeCode.Int32: return int.Parse(str);

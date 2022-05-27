@@ -43,6 +43,8 @@ namespace Parser.Readers
       char firstRowDelimiter = string.IsNullOrEmpty(_options.RowDelimiter) ? default : _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
       char firstDelimiter = string.IsNullOrEmpty(_options.Delimiter) ? default : _options.Delimiter[0];           // Grab the first character from the delimiter since it is much faster to check char to char
       uint row = 0;                                                                                               // The current row we are working on
+      bool hasDoubleWrapper = false;
+      bool hasWrapper = false;
       ReadOnlySpan<char> delimiterSpan = _options.Delimiter.AsSpan();
       ReadOnlySpan<char> rowDelimiterSpan = _options.RowDelimiter.AsSpan();
 
@@ -67,9 +69,15 @@ namespace Parser.Readers
             if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
               inWrapper = false;
             else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
+            {
               i++;
+              hasDoubleWrapper = true;
+            }
             else if (!inWrapper)
+            {
               inWrapper = true;
+              hasWrapper = true;
+            }
           }
           if (inWrapper)
             continue;
@@ -78,11 +86,17 @@ namespace Parser.Readers
           {
             if (overflowLength > 0)
             {
-              AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i);
+              AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
               overflowLength = 0;
+              hasDoubleWrapper = false;
+              hasWrapper = false;
             }
             else
-              AddColumn(buffer, start, i);
+            {
+              AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
+              hasDoubleWrapper = false;
+              hasWrapper = false;
+            }
             start = i + lenColDelimiter;
           }
           else if (firstRowDelimiter == current && (lenRowDelimiter == 1 || rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter)))
@@ -91,11 +105,17 @@ namespace Parser.Readers
             {
               if (overflowLength > 0)
               {
-                AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i);
+                AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
                 overflowLength = 0;
+                hasDoubleWrapper = false;
+                hasWrapper = false;
               }
               else
-                AddColumn(buffer, start, i);
+              {
+                AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
+                hasDoubleWrapper = false;
+                hasWrapper = false;
+              }
               if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
               {
                 rowHandler(_processor.GetObject());
@@ -122,7 +142,7 @@ namespace Parser.Readers
       if (!cancellationToken.IsCancellationRequested && row++ >= _options.StartRow)
       {
         if (overflowLength > 0)
-          _processor.AddColumn(overflow.Slice(0, overflowLength));
+          _processor.AddColumn(overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
           rowHandler(_processor.GetObject());
         _processor.ClearObject();
@@ -130,19 +150,19 @@ namespace Parser.Readers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumn(ReadOnlySpan<char> buffer, int start, int i)
+    private void AddColumn(ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
     {
       if (buffer == null) return;
-      _processor.AddColumn(buffer.Slice(start, i - start));
+      _processor.AddColumn(buffer.Slice(start, i - start), hasWrapper, hasDoubleWrapper);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumnWithOverflow(ReadOnlySpan<char> overflow, ReadOnlySpan<char> buffer, int start, int i)
+    private void AddColumnWithOverflow(ReadOnlySpan<char> overflow, ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
     {
       if (buffer == null)
-        _processor.AddColumn(overflow);
+        _processor.AddColumn(overflow, hasWrapper, hasDoubleWrapper);
       else
-        _processor.AddColumn(buffer.Slice(start, i - start), overflow);
+        _processor.AddColumn(buffer.Slice(start, i - start), overflow, hasWrapper, hasDoubleWrapper);
     }
   }
 }

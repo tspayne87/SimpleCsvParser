@@ -7,9 +7,9 @@ namespace SimpleCsvParser.Processors
    /// </summary>
    internal interface IObjectProcessor<T>
    {
-     void AddColumn(ReadOnlySpan<char> str);
+     void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper);
 
-     void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow);
+     void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper);
 
      bool IsEmpty();
 
