@@ -62,7 +62,7 @@ namespace Parser.Performance
     }
 
     [Benchmark]
-    public void CSVHelper()
+    public void CSVHelperModel()
     {
       using var reader = new StreamReader("PackageAssets.csv");
       using var csv = new CsvHelper.CsvReader(reader, CultureInfo.InvariantCulture);

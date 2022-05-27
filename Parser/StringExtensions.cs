@@ -15,7 +15,7 @@ namespace SimpleCsvParser
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string Clean(this string str, string doubleWrap, string singleWrap)
     {
-      return str.Replace(doubleWrap, singleWrap);
+      return str.Replace(doubleWrap, singleWrap);//using escapes is somewhat exceptional but still this allocates another string unnessarily 
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -33,6 +33,8 @@ namespace SimpleCsvParser
       if (isNullable && str == "null") return null;
 
       if (isEnum) return Enum.Parse(type, new string(str));
+      if(type ==typeof(Guid)) return Guid.Parse(str);
+                
       switch (typeCode)
       {
         case TypeCode.String: return new string(str).Clean(doubleWrap, singleWrap);
