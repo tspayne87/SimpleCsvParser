@@ -10,9 +10,10 @@ namespace SimpleCsvParser.Processors
   /// </summary>
   internal class ListStringProcessor : IObjectProcessor<IList<string>>
   {
-    private string[] _result = default;
-    private int _colIndex = 0;
+    private string[] _result;
+    private int _colIndex;
     private int _colCount;
+
     /// <summary>
     /// Boolean to determine if a column has been set or not
     /// </summary>
@@ -22,10 +23,10 @@ namespace SimpleCsvParser.Processors
 
     private string _doubleWrap, _singleWrap;
 
-    public ListStringProcessor(char wrapper, int numCols)
+    public ListStringProcessor(char wrapper)
     {
-      _result = new string[numCols];
-      _colCount = numCols;
+      _result = new string[0];
+      _colIndex = 0;
       _wrapper = wrapper;
       _doubleWrap = $"{_wrapper}{_wrapper}";
       _singleWrap = $"{_wrapper}";
@@ -35,6 +36,12 @@ namespace SimpleCsvParser.Processors
     /// <inheritdoc />
     public void AddColumn(ReadOnlySpan<char> str)
     {
+      if (_result.Length < _colIndex + 1)
+      {
+        Array.Resize(ref _result, _colIndex + 1);
+        _colCount = _colIndex + 1;
+      }
+
       if (str.Length > 0)
       {
         if (str[0] == _wrapper)

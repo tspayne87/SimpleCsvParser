@@ -9,7 +9,6 @@ using System.Threading;
 namespace Parser.Readers
 {
   internal class PipelineReader<T>
-      where T : class, new()
   {
     private Stream _stream;
     private IObjectProcessor<T> _processor;
@@ -61,11 +60,13 @@ namespace Parser.Readers
         start = 0;
         for (int i = 0; i < bufferLength; ++i)
         {
-          if (_wrapper == buffer[i])
+          var current = buffer[i];
+          if (_wrapper == current)
           {
-            if (inWrapper && (i + 1 >= bufferLength || buffer[i + 1] != _wrapper))
+            var next = buffer[i + 1];
+            if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
               inWrapper = false;
-            else if (inWrapper && (i + 1 >= bufferLength || buffer[i + 1] == _wrapper))
+            else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
               i++;
             else if (!inWrapper)
               inWrapper = true;
@@ -73,7 +74,7 @@ namespace Parser.Readers
           if (inWrapper)
             continue;
 
-          if (firstDelimiter == buffer[i] && row >= _options.StartRow && (lenColDelimiter == 1 || delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter)))
+          if (firstDelimiter == current && row >= _options.StartRow && (lenColDelimiter == 1 || delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter)))
           {
             if (overflowLength > 0)
             {
@@ -84,7 +85,7 @@ namespace Parser.Readers
               AddColumn(buffer, start, i);
             start = i + lenColDelimiter;
           }
-          else if (firstRowDelimiter == buffer[i] && (lenRowDelimiter == 1 || rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter)))
+          else if (firstRowDelimiter == current && (lenRowDelimiter == 1 || rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter)))
           {
             if (row++ >= _options.StartRow)
             {

@@ -15,7 +15,7 @@ namespace SimpleCsvParser.Processors
     /// <summary>
     /// The props used when assigning values
     /// </summary>
-    private readonly Dictionary<int, (Action<TModel, object>, TypeCode, Type, bool, bool)> _props;
+    private readonly PropertyLookup[] _props;
 
     /// <summary>
     /// The current index for the row we have added to the model
@@ -54,34 +54,35 @@ namespace SimpleCsvParser.Processors
       _doubleWrap = $"{_wrapper}{_wrapper}";
       _singleWrap = $"{_wrapper}";
 
-      _props = new Dictionary<int, (Action<TModel, object>, TypeCode, Type, bool, bool)>();
+      _props = new PropertyLookup[0];
       foreach(var prop in typeof(TModel).GetProperties())
       {
         if (!Attribute.IsDefined(prop, typeof(CsvPropertyAttribute)))
           continue;
-          
-        var attr = prop.GetCustomAttribute<CsvPropertyAttribute>(true);
-        if (string.IsNullOrWhiteSpace(attr.Header))
-          _props[attr.ColIndex] = GeneratePropertyDetails(prop);
-
-        if (headers == null)
-          continue;
         
-        var index = headers.IndexOf(attr.Header);
-        if (index != -1)
-          _props[index] = GeneratePropertyDetails(prop);
+        var attr = prop.GetCustomAttribute<CsvPropertyAttribute>(true);
+        var index = string.IsNullOrWhiteSpace(attr.Header) ? attr.ColIndex : (headers == null ? -1 : headers.IndexOf(attr.Header));
+
+        if (index > -1)
+        {
+          if (index + 1 > _props.Length)
+            Array.Resize(ref _props, index + 1);
+          
+          _props[index] = new PropertyLookup(prop);
+        }
       }
     }
 
     /// <inheritdoc />
     public void AddColumn(ReadOnlySpan<char> str)
     {
-      if (_props.ContainsKey(_index) && str.Length > 0)
+      if (_props.Length > _index && _props[_index] != null && str.Length > 0)
       {
+        var item = _props[_index];
         if (str[0] == _wrapper)
-          _props[_index].Item1(_model, str.Slice(1, str.Length - 2).CastToValue(_props[_index].Item2, _props[_index].Item3, _props[_index].Item4, _props[_index].Item5, _doubleWrap, _singleWrap));
+          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap));
         else
-          _props[_index].Item1(_model, str.CastToValue(_props[_index].Item2, _props[_index].Item3, _props[_index].Item4, _props[_index].Item5, _doubleWrap, _singleWrap));
+          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap));
         _isNotSet = false;
       }
       _index++;
@@ -121,20 +122,27 @@ namespace SimpleCsvParser.Processors
       _isAColumnSet = false;
     }
 
-    /// <summary>
-    /// Constructor is meant to build out the expression for use down the line
-    /// </summary>
-    /// <param name="p">The property we are working with</param>
-    private (Action<TModel, object>, TypeCode, Type, bool, bool) GeneratePropertyDetails(PropertyInfo p)
+    private class PropertyLookup
     {
-      var isNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
-      var propertyType = isNullable ? Nullable.GetUnderlyingType(p.PropertyType) : p.PropertyType;
-      var prop = Expression.Parameter(typeof(TModel), "x");
-      var propObject = Expression.Parameter(typeof(object), "y");
+      public Action<TModel, object> Setter;
+      public TypeCode PropertyTypeCode;
+      public Type PropertyType;
+      public bool IsNullable, IsEnum;
+      
+      public PropertyLookup(PropertyInfo p)
+      {
+        IsNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
+        PropertyType = IsNullable ? Nullable.GetUnderlyingType(p.PropertyType) : p.PropertyType;
+        PropertyTypeCode = Type.GetTypeCode(PropertyType);
+        IsEnum = PropertyType.IsEnum;
 
-      var body = Expression.Assign(Expression.Property(prop, p), Expression.Convert(propObject, p.PropertyType));
-      var lambda = Expression.Lambda<Action<TModel, object>>(body, new[] { prop, propObject });
-      return (lambda.Compile(), Type.GetTypeCode(propertyType), propertyType, isNullable, propertyType.IsEnum);
+        var prop = Expression.Parameter(typeof(TModel), "x");
+        var propObject = Expression.Parameter(typeof(object), "y");
+
+        var body = Expression.Assign(Expression.Property(prop, p), Expression.Convert(propObject, p.PropertyType));
+        var lambda = Expression.Lambda<Action<TModel, object>>(body, new[] { prop, propObject });
+        Setter = lambda.Compile();
+      }
     }
   }
 }

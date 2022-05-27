@@ -20,7 +20,7 @@ namespace SimpleCsvParser.Streams
     /// <summary>
     /// The reader we will be getting data from.
     /// </summary>
-    private readonly PipelineReader<List<string>> _headerReader;
+    private readonly PipelineReader<IList<string>> _headerReader;
 
     /// <summary>
     /// The options used for the reader
@@ -73,7 +73,7 @@ namespace SimpleCsvParser.Streams
         RemoveEmptyEntries = options.HeaderRemoveEmptyEntries,
         StartRow = options.HeaderStartRow
       };
-      _headerReader = new PipelineReader<List<string>>(_stream, headerOptions, new ListStringProcessor(headerOptions.Wrapper ?? default));
+      _headerReader = new PipelineReader<IList<string>>(_stream, headerOptions, new ListStringProcessor(headerOptions.Wrapper ?? default));
     }
 
     #endregion
@@ -98,7 +98,7 @@ namespace SimpleCsvParser.Streams
 
         _headerReader.Parse(row =>
         {
-          headers = row;
+          headers = row.ToList();
           ct.Cancel();//only read the first row
         }, ct.Token);
 
