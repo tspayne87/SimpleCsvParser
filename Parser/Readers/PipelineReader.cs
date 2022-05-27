@@ -65,18 +65,21 @@ namespace Parser.Readers
           var current = buffer[i];
           if (_wrapper == current)
           {
-            var next = buffer[i + 1];
-            if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
-              inWrapper = false;
-            else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
-            {
-              i++;
-              hasDoubleWrapper = true;
-            }
-            else if (!inWrapper)
+            if (!inWrapper)
             {
               inWrapper = true;
               hasWrapper = true;
+            }
+            else
+            {
+              var next = buffer[i + 1];
+              if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
+                inWrapper = false;
+              else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
+              {
+                i++;
+                hasDoubleWrapper = true;
+              }
             }
           }
           if (inWrapper)
