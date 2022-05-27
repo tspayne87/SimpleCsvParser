@@ -78,23 +78,23 @@ namespace SimpleCsvParser.Streams
 
     #endregion
 
-    /// <summary>
-    /// Load Headers
-    /// </summary>
-    public void LoadHeaders()
-    {
-      var rowOptions = new ParseOptions()
-      {
-        Delimiter = _options.Delimiter,
-        Wrapper = _options.Wrapper,
-        RowDelimiter = _options.RowDelimiter,
-        RemoveEmptyEntries = _options.RemoveEmptyEntries,
-        StartRow = _options.StartRow
-      };
-      if (!_options.IgnoreHeaders)
-      {
-        var ct = new CancellationTokenSource();
-        var headers = new List<string>();
+        /// <summary>
+        /// Load Headers
+        /// </summary>
+        public void LoadHeaders()
+        {
+            var rowOptions = new ParseOptions()
+            {
+                Delimiter = _options.ColumnDelimiter,
+                Wrapper = _options.EscapeChar,
+                RowDelimiter = _options.RowDelimiter,
+                RemoveEmptyEntries = _options.RemoveEmptyEntries,
+                StartRow = _options.StartRow
+            };
+            if (!_options.IgnoreHeaders)
+            {
+                var ct = new CancellationTokenSource();
+                var headers = new List<string>();
 
         _headerReader.Parse(row =>
         {

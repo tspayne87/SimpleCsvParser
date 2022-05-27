@@ -10,10 +10,10 @@ namespace Parser.Performance
     {
         [CsvProperty(0)]
         [Index(0)]
-        public string Column1 { get; set; }
+        public Guid Column1 { get; set; }
         [CsvProperty(1)]
         [Index(1)]
-        public string Column2 { get; set; }
+        public DateTime Column2 { get; set; }
         [CsvProperty(2)]
         [Index(2)]
         public string Column3 { get; set; }
@@ -22,7 +22,7 @@ namespace Parser.Performance
         public string Column4 { get; set; }
         [CsvProperty(4)]
         [Index(4)]
-        public string Column5 { get; set; }
+        public DateTime Column5 { get; set; }
         [CsvProperty(5)]
         [Index(5)]
         public string Column6 { get; set; }

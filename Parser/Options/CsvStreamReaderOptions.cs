@@ -1,3 +1,5 @@
+using System;
+
 namespace SimpleCsvParser.Options
 {
    /// <summary>
@@ -8,26 +10,26 @@ namespace SimpleCsvParser.Options
       /// <summary>
       /// The delimiter that is used to seperate data values.
       /// </summary>
-      public string Delimiter { get; set; } = ",";
+      public string ColumnDelimiter { get; set; } = ",";
 
       /// <summary>
-      /// The data wrapper that is used when the delimiter is part of the data value.
+      /// The escape char that is used when the column delimiter is part of the data value.
       /// </summary>
-      public char? Wrapper { get; set; } = '"';
+      public char? EscapeChar { get; set; } = '"';
 
       /// <summary>
       /// The row delimiter that should be used when breaking up the rows.
       /// </summary>
       /// <value></value>
-      public string RowDelimiter { get; set; } = "\r\n";
+      public string RowDelimiter { get; set; } = Environment.NewLine;
 
       /// <summary>
-      /// If empty entries need to be removed from the list.
+      /// If empty rows need to be removed from the result.
       /// </summary>
       public bool RemoveEmptyEntries { get; set; } = false;
 
       /// <summary>
-      /// The row index where the data start in the file.
+      /// The row index where the data starts in the file.
       /// </summary>
       /// <value></value>
       public int StartRow { get; set; } = 0;

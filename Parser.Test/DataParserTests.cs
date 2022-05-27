@@ -48,7 +48,7 @@ namespace SimpleCsvParser.Test
     public void TestWithEmptyDelimiter()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { Wrapper = null, Delimiter = string.Empty });
+      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { EscapeChar = null, ColumnDelimiter = string.Empty });
       var result = new List<IList<string>>();
       reader.Parse(row => result.Add(row));
 
@@ -61,7 +61,7 @@ namespace SimpleCsvParser.Test
     public void TestWithNoWrapper()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { Wrapper = null, HeaderWrapper = null, StartRow = 1 });
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { EscapeChar = null, HeaderWrapper = null, StartRow = 1 });
       reader.LoadHeaders();
 
       TestModel result = default;
@@ -108,16 +108,16 @@ namespace SimpleCsvParser.Test
       Assert.AreEqual(DateTime.Parse("03/27/1987"), result.Date);
     }
 
-    [TestMethod]
-    public void TestTabDelimited()
-    {
-      TestModel result = default;
-      CancellationTokenSource ct = new CancellationTokenSource();
-      CsvParser.Parse<TestModel>(
-          "name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987",
-          new CsvStreamReaderWithHeaderOptions() { Delimiter = "\t", RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = "\t", StartRow = 1 },
-          row => { result = row; ct.Cancel(); },
-          ct.Token);
+        [TestMethod]
+        public void TestTabDelimited()
+        {
+            TestModel result = default;
+            CancellationTokenSource ct = new CancellationTokenSource();
+            CsvParser.Parse<TestModel>(
+                "name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987", 
+                new CsvStreamReaderWithHeaderOptions() { ColumnDelimiter = "\t", RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = "\t", StartRow = 1 },
+                row => { result = row; ct.Cancel(); }, 
+                ct.Token);
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Attachment, result.Type);
@@ -127,15 +127,15 @@ namespace SimpleCsvParser.Test
 
     }
 
-    [TestMethod]
-    public void TestCustomDelimiterAndWrapper()
-    {
-      var stream = StreamHelper.GenerateStream("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { Delimiter = ";", Wrapper = '*', RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = ";", StartRow = 1 });
-      reader.LoadHeaders();
-      TestModel result = default;
-      CancellationTokenSource ct = new CancellationTokenSource();
-      reader.Parse(row => { result = row; ct.Cancel(); }, ct.Token);
+        [TestMethod]
+        public void TestCustomDelimiterAndWrapper()
+        {
+            var stream = StreamHelper.GenerateStream("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*");
+            using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { ColumnDelimiter = ";", EscapeChar = '*', RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = ";", StartRow = 1 });
+            reader.LoadHeaders();
+            TestModel result = default;
+            CancellationTokenSource ct = new CancellationTokenSource();
+            reader.Parse(row => { result = row; ct.Cancel(); }, ct.Token);
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Spell, result.Type);
