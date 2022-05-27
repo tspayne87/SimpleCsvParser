@@ -18,7 +18,7 @@ namespace SimpleCsvParser.Streams
         /// <summary>
         /// The reader we will be getting data from.
         /// </summary>
-        internal readonly PipelineReader<List<string>> _reader;
+        internal readonly PipelineReader<IList<string>> _reader;
 
         /// <summary>
         /// The stream that we may need to dispose.
@@ -65,12 +65,12 @@ namespace SimpleCsvParser.Streams
                 RemoveEmptyEntries = options.RemoveEmptyEntries,
                 StartRow = options.StartRow
             };
-            _reader = new PipelineReader<List<string>>(_stream, parseOptions, new ListStringProcessor());
+            _reader = new PipelineReader<IList<string>>(_stream, parseOptions, new ListStringProcessor(parseOptions.Wrapper ?? default));
         }
 
         #endregion
 
-        public void Parse(Action<List<string>> rowHandler, CancellationToken? cancellationToken = null)
+        public void Parse(Action<IList<string>> rowHandler, CancellationToken? cancellationToken = null)
         {
             _reader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
         }
