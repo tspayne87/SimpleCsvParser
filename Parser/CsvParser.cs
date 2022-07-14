@@ -3,6 +3,8 @@ using System.IO;
 using SimpleCsvParser.Streams;
 using SimpleCsvParser.Options;
 using System.Linq;
+using System.Threading;
+using System;
 
 namespace SimpleCsvParser
 {
@@ -14,7 +16,7 @@ namespace SimpleCsvParser
     /// <param name="csv">The csv string that needs to be parsed.</param>
     /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
     /// <returns>The list of objects that the parser comes back at.</returns>
-    public static List<TModel> Parse<TModel>(string csv)
+    public static IEnumerable<TModel> Parse<TModel>(string csv)
        where TModel : class, new()
     {
       return Parse<TModel>(csv, new CsvStreamReaderWithHeaderOptions());
@@ -27,12 +29,13 @@ namespace SimpleCsvParser
     /// <param name="options">The options that should be sent off to the stream.</param>
     /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
     /// <returns>The list of objects that the parser comes back at.</returns>
-    public static List<TModel> Parse<TModel>(string csv, CsvStreamReaderWithHeaderOptions options)
+    public static IEnumerable<TModel> Parse<TModel>(string csv, CsvStreamReaderWithHeaderOptions options)
        where TModel : class, new()
     {
       using var reader = new CsvStreamModelReader<TModel>(GenerateStream(csv), options);
       reader.LoadHeaders();
-      return reader.Parse().ToList();
+      foreach(var item in reader.Parse())
+        yield return item;
     }
 
     /// <summary>
@@ -41,7 +44,7 @@ namespace SimpleCsvParser
     /// <param name="path">The file path to the csv file that needs to be parsed.</param>
     /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
     /// <returns>The list of objects that the parser comes back at.</returns>
-    public static List<TModel> ParseFile<TModel>(string path)
+    public static IEnumerable<TModel> ParseFile<TModel>(string path)
        where TModel : class, new()
     {
       return ParseFile<TModel>(path, new CsvStreamReaderWithHeaderOptions());
@@ -54,27 +57,22 @@ namespace SimpleCsvParser
     /// <param name="options">The options that should be sent off to the stream.</param>
     /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
     /// <returns>The list of objects that the parser comes back at.</returns>
-    public static List<TModel> ParseFile<TModel>(string path, CsvStreamReaderWithHeaderOptions options)
+    public static IEnumerable<TModel> ParseFile<TModel>(string path, CsvStreamReaderWithHeaderOptions options)
        where TModel : class, new()
     {
       using var reader = new CsvStreamModelReader<TModel>(path, options);
       reader.LoadHeaders();
-      return reader.Parse().ToList();
+      foreach(var item in reader.Parse())
+        yield return item;
     }
 
-    /// <summary>
-    /// Method is meant to deal with reading csv files from the system.
-    /// </summary>
-    /// <param name="stream">The stream.</param>
-    /// <param name="options">The options that should be sent off to the stream.</param>
-    /// <typeparam name="TModel">The model the parser needs to turn into.</typeparam>
-    /// <returns>The list of objects that the parser comes back at.</returns>
-    public static List<TModel> ParseFile<TModel>(Stream stream, CsvStreamReaderWithHeaderOptions csvStreamOptions)
+    public static IEnumerable<TModel> ParseFile<TModel>(Stream stream, CsvStreamReaderWithHeaderOptions csvStreamOptions)
         where TModel : class, new()
     {
       using var reader = new CsvStreamModelReader<TModel>(stream, csvStreamOptions);
       reader.LoadHeaders();
-      return reader.Parse().ToList();
+      foreach(var item in reader.Parse())
+        yield return item;
     }
 
     /// <summary>

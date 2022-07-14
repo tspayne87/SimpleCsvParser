@@ -1,9 +1,11 @@
 using System;
 using System.IO;
-using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SimpleCsvParser.Streams;
 using SimpleCsvParser.Options;
+using System.Collections.Generic;
+using System.Threading;
+using System.Linq;
 
 namespace SimpleCsvParser.Test
 {
@@ -24,7 +26,8 @@ namespace SimpleCsvParser.Test
     [TestMethod]
     public void TestSkipRows()
     {
-      var entries = CsvParser.ParseFile<TestModel>("test.csv", new CsvStreamReaderWithHeaderOptions() { RemoveEmptyEntries = true, StartRow = 10 }).ToList();
+      var entries = CsvParser.ParseFile<TestModel>("test.csv", new CsvStreamReaderWithHeaderOptions() { RemoveEmptyEntries = true, StartRow = 10 })
+        .ToList();
       Assert.AreEqual(14, entries.Count);
     }
 
@@ -41,12 +44,25 @@ namespace SimpleCsvParser.Test
     }
 
     [TestMethod]
+    public void TestWithEmptyDelimiter()
+    {
+      var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
+      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { EscapeChar = null, ColumnDelimiter = string.Empty });
+      new List<IList<string>>();
+      var result = reader.Parse().ToList();
+
+      Assert.AreEqual(2, result.Count);
+      Assert.AreEqual("name,type,cost,id,date", result[0][0]);
+      Assert.AreEqual("Claws,Attachment,10,34.5,03/27/1987", result[1][0]);
+    }
+
+    [TestMethod]
     public void TestWithNoWrapper()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { Wrapper = null, HeaderWrapper = null, StartRow = 1 });
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { EscapeChar = null, HeaderWrapper = null, StartRow = 1 });
       reader.LoadHeaders();
-      var result = reader.Parse().FirstOrDefault();
+      TestModel result = reader.Parse().FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Attachment, result.Type);
@@ -56,24 +72,12 @@ namespace SimpleCsvParser.Test
     }
 
     [TestMethod]
-    public void TestWithEmptyDelimiter()
-    {
-      var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { Wrapper = null, Delimiter = string.Empty });
-      var result = reader.Parse().ToList();
-
-      Assert.AreEqual(2, result.Count);
-      Assert.AreEqual("name,type,cost,id,date", result[0][0]);
-      Assert.AreEqual("Claws,Attachment,10,34.5,03/27/1987", result[1][0]);
-    }
-
-    [TestMethod]
     public void TestSkipHeaderAndData()
     {
       var stream = StreamHelper.GenerateStream("This is an example message\r\n \r\nname,type,cost,id,date\r\n \r\nThe Data follows this:\r\nClaws,Attachment,10,\"34.5\",03/27/1987");
       using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { StartRow = 5, HeaderStartRow = 2 });
       reader.LoadHeaders();
-      var result = reader.Parse().FirstOrDefault();
+      TestModel result = reader.Parse().FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Attachment, result.Type);
@@ -87,7 +91,7 @@ namespace SimpleCsvParser.Test
     {
       using var reader = new CsvStreamModelReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamReaderWithHeaderOptions() { StartRow = 1 });
       reader.LoadHeaders();
-      var result = reader.Parse().FirstOrDefault();
+      TestModel result = reader.Parse().FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Attachment, result.Type);
@@ -99,7 +103,10 @@ namespace SimpleCsvParser.Test
     [TestMethod]
     public void TestTabDelimited()
     {
-      var result = CsvParser.Parse<TestModel>("name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987", new CsvStreamReaderWithHeaderOptions() { Delimiter = "\t", RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = "\t", StartRow = 1 }).FirstOrDefault();
+      TestModel result = CsvParser.Parse<TestModel>(
+          "name\ttype\tcost\tid\tdate\nClaws\tAttachment\t10\t\"34.5\"\t03/27/1987",
+          new CsvStreamReaderWithHeaderOptions() { ColumnDelimiter = "\t", RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = "\t", StartRow = 1 })
+          .FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Attachment, result.Type);
@@ -113,9 +120,9 @@ namespace SimpleCsvParser.Test
     public void TestCustomDelimiterAndWrapper()
     {
       var stream = StreamHelper.GenerateStream("name;type;cost;id;date\n*Claws*;Spell;50;50.55;*6-19-2012*");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { Delimiter = ";", Wrapper = '*', RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = ";", StartRow = 1 });
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { ColumnDelimiter = ";", EscapeChar = '*', RowDelimiter = "\n", HeaderRowDelimiter = "\n", HeaderDelimiter = ";", StartRow = 1 });
       reader.LoadHeaders();
-      var result = reader.Parse().FirstOrDefault();
+      TestModel result = reader.Parse().FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Spell, result.Type);
@@ -129,7 +136,7 @@ namespace SimpleCsvParser.Test
     {
       using var reader = new CsvStreamModelReader<SecondTestModel>(StreamHelper.GenerateStream("Claws,Effect,10,60.05,9-5-1029"), new CsvStreamReaderWithHeaderOptions() { IgnoreHeaders = true, StartRow = 0 });
       reader.LoadHeaders();
-      var result = reader.Parse().FirstOrDefault();
+      SecondTestModel result = reader.Parse().FirstOrDefault();
 
       Assert.AreEqual("Claws", result.Name);
       Assert.AreEqual(TestType.Effect, result.Type);
@@ -144,7 +151,7 @@ namespace SimpleCsvParser.Test
     {
       using var reader = new CsvStreamModelReader<TypeModel>("type.csv", new CsvStreamReaderWithHeaderOptions() { StartRow = 1 });
       reader.LoadHeaders();
-      var results = reader.Parse().ToList();
+      List<TypeModel> results = reader.Parse().ToList();
 
       Assert.AreEqual(3, results.Count);
 

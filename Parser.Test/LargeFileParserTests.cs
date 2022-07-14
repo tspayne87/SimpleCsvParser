@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SimpleCsvParser.Streams;
 using SimpleCsvParser.Options;
+using Parser.Test;
+using System.IO;
 
 namespace SimpleCsvParser.Test
 {
@@ -15,10 +17,21 @@ namespace SimpleCsvParser.Test
     public void ProcessLargeFile()
     {
       using var reader = new CsvStreamModelReader<LargeModel>("large.csv", new CsvStreamReaderWithHeaderOptions() { IgnoreHeaders = true, RowDelimiter = "\n", StartRow = 1 });
-      reader.LoadHeaders(); 
+      reader.LoadHeaders();
       var count = 0;
-      foreach (var item in reader.Parse())
+      foreach(var item in reader.Parse())
         count++;
+      Assert.AreEqual(50000, count);
+    }
+
+    [TestMethod]
+    public void ProcessOtherLargeFile()
+    {
+      using var stream = File.OpenRead("PackageAssets.csv");
+      using var reader = new CsvStreamModelReader<DataModel>(stream);
+      reader.LoadHeaders();
+      foreach(var item in reader.Parse())
+        ; // NOOP
     }
   }
 }

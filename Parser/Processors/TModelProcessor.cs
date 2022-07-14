@@ -15,7 +15,7 @@ namespace SimpleCsvParser.Processors
     /// <summary>
     /// The props used when assigning values
     /// </summary>
-    private readonly Dictionary<int, SimpleInfo> _props;
+    private readonly PropertyLookup[] _props;
 
     /// <summary>
     /// The current index for the row we have added to the model
@@ -37,43 +37,62 @@ namespace SimpleCsvParser.Processors
     /// </summary>
     private bool _isAColumnSet;
 
+    private char _wrapper;
+
+    private string _doubleWrap, _singleWrap;
+
     /// <summary>
     /// Constructor for the processor to load in the headers that will be used when building out the objects
     /// </summary>
-    public TModelProcessor(List<string> headers)
+    public TModelProcessor(List<string> headers, char wrapper)
     {
       _index = 0;
       _model = new TModel();
       _isNotSet = true;
       _isAColumnSet = false;
-      _props = typeof(TModel)
-        .GetProperties()
-        .Where(prop => Attribute.IsDefined(prop, typeof(CsvPropertyAttribute)))
-        .Select(x => new KeyValuePair<PropertyInfo, CsvPropertyAttribute>(x, x.GetCustomAttribute<CsvPropertyAttribute>(true)))
-        .OrderBy(x => x.Value.ColIndex)
-        .ThenBy(x => x.Value.Header)
-        .Select(x =>
+      _wrapper = wrapper;
+      _doubleWrap = $"{_wrapper}{_wrapper}";
+      _singleWrap = $"{_wrapper}";
+
+      _props = new PropertyLookup[0];
+      foreach(var prop in typeof(TModel).GetProperties())
+      {
+        if (!Attribute.IsDefined(prop, typeof(CsvPropertyAttribute)))
+          continue;
+        
+        var attr = prop.GetCustomAttribute<CsvPropertyAttribute>(true);
+        var index = string.IsNullOrWhiteSpace(attr.Header) ? attr.ColIndex : (headers == null ? -1 : headers.IndexOf(attr.Header));
+
+        if (index > -1)
         {
-          if (string.IsNullOrEmpty(x.Value.Header))
-            return new KeyValuePair<int, SimpleInfo>(x.Value.ColIndex, new SimpleInfo(x.Key));
-          if (headers == null)
-            return new KeyValuePair<int, SimpleInfo>(-1, null);
-          return new KeyValuePair<int, SimpleInfo>(headers.IndexOf(x.Value.Header), new SimpleInfo(x.Key));
-        })
-        .Where(x => x.Key > -1)
-        .ToDictionary(x => x.Key, x => x.Value);
+          if (index + 1 > _props.Length)
+            Array.Resize(ref _props, index + 1);
+          
+          _props[index] = new PropertyLookup(prop);
+        }
+      }
     }
 
     /// <inheritdoc />
-    public void AddColumn(string str)
+    public void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper)
     {
-      if (_props.ContainsKey(_index) && !string.IsNullOrWhiteSpace(str))
+      PropertyLookup item;
+      if (_props.Length > _index && (item = _props[_index]) != null && str.Length > 0)
       {
-        _props[_index].Set(_model, str);
+        if (hasWrapper)
+          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
+        else
+          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
         _isNotSet = false;
       }
       _index++;
       _isAColumnSet = true;
+    }
+
+    /// <inheritdoc />
+    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper)
+    {
+      AddColumn(overflow.MergeSpan(str), hasWrapper, hasDoubleWrapper);
     }
 
     /// <inheritdoc />
@@ -103,32 +122,27 @@ namespace SimpleCsvParser.Processors
       _isAColumnSet = false;
     }
 
-    /// <summary>
-    /// Simple info object meant to compile a setter through linq expressions so that it can be fast
-    /// </summary>
-    private class SimpleInfo
+    private class PropertyLookup
     {
-      /// <summary>
-      /// Constructor is meant to build out the expression for use down the line
-      /// </summary>
-      /// <param name="p">The property we are working with</param>
-      public SimpleInfo(PropertyInfo p)
+      public Action<TModel, object> Setter;
+      public TypeCode PropertyTypeCode;
+      public Type PropertyType;
+      public bool IsNullable, IsEnum;
+      
+      public PropertyLookup(PropertyInfo p)
       {
-        var isNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
-        var propertyType = isNullable ? Nullable.GetUnderlyingType(p.PropertyType) : p.PropertyType;
+        IsNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
+        PropertyType = IsNullable ? Nullable.GetUnderlyingType(p.PropertyType) : p.PropertyType;
+        PropertyTypeCode = Type.GetTypeCode(PropertyType);
+        IsEnum = PropertyType.IsEnum;
+
         var prop = Expression.Parameter(typeof(TModel), "x");
-        var propObject = Expression.Parameter(typeof(string), "y");
+        var propObject = Expression.Parameter(typeof(object), "y");
 
-        var converter = typeof(StringExtensions).GetMethod("CastToValue", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-        var converterCall = Expression.Call(null, converter, propObject, Expression.Constant(propertyType), Expression.Constant(isNullable));
-
-        var body = Expression.Assign(Expression.Property(prop, p), Expression.Convert(converterCall, p.PropertyType));
-
-        var lambda = Expression.Lambda<Action<TModel, string>>(body, new[] { prop, propObject });
-        Set = lambda.Compile();
+        var body = Expression.Assign(Expression.Property(prop, p), Expression.Convert(propObject, p.PropertyType));
+        var lambda = Expression.Lambda<Action<TModel, object>>(body, new[] { prop, propObject });
+        Setter = lambda.Compile();
       }
-
-      public readonly Action<TModel, string> Set;
     }
   }
 }
