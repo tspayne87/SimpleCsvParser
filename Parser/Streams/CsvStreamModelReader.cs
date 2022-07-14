@@ -78,40 +78,32 @@ namespace SimpleCsvParser.Streams
 
     #endregion
 
-        /// <summary>
-        /// Load Headers
-        /// </summary>
-        public void LoadHeaders()
-        {
-            var rowOptions = new ParseOptions()
-            {
-                Delimiter = _options.ColumnDelimiter,
-                Wrapper = _options.EscapeChar,
-                RowDelimiter = _options.RowDelimiter,
-                RemoveEmptyEntries = _options.RemoveEmptyEntries,
-                StartRow = _options.StartRow
-            };
-            if (!_options.IgnoreHeaders)
-            {
-                var ct = new CancellationTokenSource();
-                var headers = new List<string>();
-
-        _headerReader.Parse(row =>
-        {
-          headers = row.ToList();
-          ct.Cancel();//only read the first row
-        }, ct.Token);
-
+    /// <summary>
+    /// Load Headers
+    /// </summary>
+    public void LoadHeaders()
+    {
+      var rowOptions = new ParseOptions()
+      {
+        Delimiter = _options.ColumnDelimiter,
+        Wrapper = _options.EscapeChar,
+        RowDelimiter = _options.RowDelimiter,
+        RemoveEmptyEntries = _options.RemoveEmptyEntries,
+        StartRow = _options.StartRow
+      };
+      if (!_options.IgnoreHeaders)
+      {
+        var ct = new CancellationTokenSource();
+        var headers = _headerReader.Parse().FirstOrDefault().ToList();
         _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(headers, rowOptions.Wrapper ?? default));
       }
       else
         _rowReader = new PipelineReader<TModel>(_stream, rowOptions, new TModelProcessor<TModel>(null, rowOptions.Wrapper ?? default));
     }
 
-    public void Parse(Action<TModel> rowHandler, CancellationToken? cancellationToken = null)
+    public IEnumerable<TModel> Parse()
     {
-      if (_rowReader == null) throw new ArgumentNullException("Call Load Headers Before Parsing");
-      _rowReader.Parse(rowHandler, cancellationToken ?? CancellationToken.None);
+      return _rowReader.Parse();
     }
 
     #region IDisposable Support

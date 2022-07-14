@@ -19,8 +19,8 @@ namespace SimpleCsvParser.Test
       using var reader = new CsvStreamModelReader<LargeModel>("large.csv", new CsvStreamReaderWithHeaderOptions() { IgnoreHeaders = true, RowDelimiter = "\n", StartRow = 1 });
       reader.LoadHeaders();
       var count = 0;
-
-      reader.Parse(row => count++);
+      foreach(var item in reader.Parse())
+        count++;
       Assert.AreEqual(50000, count);
     }
 
@@ -30,10 +30,8 @@ namespace SimpleCsvParser.Test
       using var stream = File.OpenRead("PackageAssets.csv");
       using var reader = new CsvStreamModelReader<DataModel>(stream);
       reader.LoadHeaders();
-      reader.Parse(row =>
-      {
+      foreach(var item in reader.Parse())
         ; // NOOP
-      });
     }
   }
 }

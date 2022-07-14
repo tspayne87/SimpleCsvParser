@@ -21,12 +21,9 @@ namespace Parser.Performance
       {
         reader.LoadHeaders();
         var ct = new CancellationTokenSource();
-        reader.Parse(row =>
-        {
-          ;
+        foreach(var item in reader.Parse())
           if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
-            ct.Cancel();
-        }, ct.Token);
+            break;
       }
     }
 
@@ -36,12 +33,9 @@ namespace Parser.Performance
       using var stream = File.OpenRead("PackageAssets.csv");
       using var reader = new CsvStreamReader(stream);
       var ct = new CancellationTokenSource();
-      reader.Parse(row =>
-        {
-          ;
-          if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
-            ct.Cancel();
-        }, ct.Token);
+      foreach(var item in reader.Parse())
+        if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
+          break;
     }
 
     [Benchmark]

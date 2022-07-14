@@ -8,6 +8,12 @@ var count = 0;
 using (var reader = new CsvStreamReader("large.csv"))
 {
   //reader.LoadHeaders();
-  reader.Parse(row => count++);
+  foreach(var item in reader.Parse()) {
+    if (item.Count > 200) {
+      Console.WriteLine(item.Count);
+      break;
+    }
+    count++;
+  }
 }
 Console.WriteLine(count);

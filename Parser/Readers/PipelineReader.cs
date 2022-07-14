@@ -5,6 +5,7 @@ using SimpleCsvParser.Processors;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace Parser.Readers
 {
@@ -15,6 +16,18 @@ namespace Parser.Readers
     private ParseOptions _options;
     private string _doubleWrap, _singleWrap;
     private char _wrapper;
+
+    private char[] _buffer;
+    private char[] _overflow;
+    private readonly char[] _delimiterSpan;
+    private readonly char[] _rowDelimiterSpan;
+
+    private Span<char> buffer => _buffer;
+    private Span<char> overflow => _overflow;
+    private ReadOnlySpan<char> delimiterSpan => _delimiterSpan;
+    private ReadOnlySpan<char> rowDelimiterSpan => _rowDelimiterSpan;
+    
+
     public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
     {
       if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)
@@ -30,13 +43,16 @@ namespace Parser.Readers
       _wrapper = _options.Wrapper == null ? default : _options.Wrapper.Value;
       _doubleWrap = $"{_wrapper}{_wrapper}";
       _singleWrap = $"{_wrapper}";
+      _buffer = new char[4 * 1024];
+      _overflow = new char[1024];
+      _delimiterSpan = _options.Delimiter.ToCharArray();
+      _rowDelimiterSpan = _options.RowDelimiter.ToCharArray();
     }
 
-    internal void Parse(Action<T> rowHandler, CancellationToken cancellationToken)
+    internal IEnumerable<T> Parse()
     {
       _stream.Seek(0, SeekOrigin.Begin);
       using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
-      Span<char> buffer = new Span<char>(new char[4 * 1024]);                                                     // Create a buffer to store the characters loaded from the stream.
       int bufferLength;                                                                                           // The current buffer length, the start of the column the end of the column
       int start = 0;                                                                                              // The current starting position of the column
       bool inWrapper = false;                                                                                     // If we are currently in a wrapper or not
@@ -45,24 +61,21 @@ namespace Parser.Readers
       uint row = 0;                                                                                               // The current row we are working on
       bool hasDoubleWrapper = false;
       bool hasWrapper = false;
-      ReadOnlySpan<char> delimiterSpan = _options.Delimiter.AsSpan();
-      ReadOnlySpan<char> rowDelimiterSpan = _options.RowDelimiter.AsSpan();
-
-      Span<char> overflow = new Span<char>(new char[1024]);
       int overflowLength = 0;
-
       int lenRowDelimiter = rowDelimiterSpan.Length;
       int lenColDelimiter = delimiterSpan.Length;
 
       while ((bufferLength = reader.Read(buffer)) > 0)
       {
-        if (cancellationToken.IsCancellationRequested)
-          break;
-
         start = 0;
         for (int i = 0; i < bufferLength; ++i)
         {
           var current = buffer[i];
+          int rowBufferCurrentIndex = i - lenRowDelimiter + 1;
+          int colBufferCurrentIndex = i - lenColDelimiter + 1;
+          char? rowBufferCurrent = overflowLength > 0 && rowBufferCurrentIndex < 0 ? overflow[overflowLength + rowBufferCurrentIndex] : null;
+          char? colBufferCurrent = overflowLength > 0 && colBufferCurrentIndex < 0 ? overflow[overflowLength + colBufferCurrentIndex] : null;
+
           if (_wrapper == current)
           {
             if (!inWrapper)
@@ -85,7 +98,14 @@ namespace Parser.Readers
           if (inWrapper)
             continue;
 
-          if (firstDelimiter == current && row >= _options.StartRow && (lenColDelimiter == 1 || delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter)))
+          if (
+            row >= _options.StartRow &&
+            (
+              (firstDelimiter == current && lenColDelimiter == 1)
+              || (firstDelimiter == current && delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter))
+              || (firstDelimiter == colBufferCurrent && delimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + colBufferCurrentIndex, Math.Abs(colBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenColDelimiter + colBufferCurrentIndex)), 0, lenColDelimiter))
+            )
+          )
           {
             if (overflowLength > 0)
             {
@@ -102,7 +122,11 @@ namespace Parser.Readers
             }
             start = i + lenColDelimiter;
           }
-          else if (firstRowDelimiter == current && (lenRowDelimiter == 1 || rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter)))
+          else if (
+            (firstRowDelimiter == current && lenRowDelimiter == 1)
+            || (firstRowDelimiter == current && rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter))
+            || (firstRowDelimiter == rowBufferCurrent && rowDelimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + rowBufferCurrentIndex, Math.Abs(rowBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenRowDelimiter + rowBufferCurrentIndex)), 0, lenRowDelimiter))
+          )
           {
             if (row++ >= _options.StartRow)
             {
@@ -121,9 +145,7 @@ namespace Parser.Readers
               }
               if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
               {
-                rowHandler(_processor.GetObject());
-                if (cancellationToken.IsCancellationRequested)
-                  break;
+                yield return _processor.GetObject();
               }
               _processor.ClearObject();
             }
@@ -132,9 +154,6 @@ namespace Parser.Readers
           }
         }
 
-        if (cancellationToken.IsCancellationRequested)
-          break;
-
         if (start < bufferLength)
         {
           buffer.Slice(start, bufferLength - start).CopyTo(overflow);
@@ -142,12 +161,12 @@ namespace Parser.Readers
         }
       }
 
-      if (!cancellationToken.IsCancellationRequested && row++ >= _options.StartRow)
+      if (row++ >= _options.StartRow)
       {
         if (overflowLength > 0)
           _processor.AddColumn(overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
-          rowHandler(_processor.GetObject());
+          yield return _processor.GetObject();
         _processor.ClearObject();
       }
     }

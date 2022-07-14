@@ -19,6 +19,24 @@ namespace SimpleCsvParser
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ReadOnlySpan<char> MergeSpan(this Span<char> left, Span<char> right)
+    {
+      return MergeSpan((ReadOnlySpan<char>)left, (ReadOnlySpan<char>)right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ReadOnlySpan<char> MergeSpan(this ReadOnlySpan<char> left, Span<char> right)
+    {
+      return MergeSpan(left, (ReadOnlySpan<char>)right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ReadOnlySpan<char> MergeSpan(this Span<char> left, ReadOnlySpan<char> right)
+    {
+      return MergeSpan((ReadOnlySpan<char>)left, right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ReadOnlySpan<char> MergeSpan(this ReadOnlySpan<char> left, ReadOnlySpan<char> right)
     {
       Span<char> result = new Span<char>(new char[left.Length + right.Length]);
