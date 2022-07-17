@@ -6,6 +6,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Collections.Generic;
+using Parser.Watchers;
 
 namespace Parser.Readers
 {
@@ -22,10 +23,6 @@ namespace Parser.Readers
     private readonly char[] _delimiterSpan;
     private readonly char[] _rowDelimiterSpan;
 
-    private Span<char> buffer => _buffer;
-    private Span<char> overflow => _overflow;
-    private ReadOnlySpan<char> delimiterSpan => _delimiterSpan;
-    private ReadOnlySpan<char> rowDelimiterSpan => _rowDelimiterSpan;
     
 
     public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
@@ -62,19 +59,19 @@ namespace Parser.Readers
       bool hasDoubleWrapper = false;
       bool hasWrapper = false;
       int overflowLength = 0;
-      int lenRowDelimiter = rowDelimiterSpan.Length;
-      int lenColDelimiter = delimiterSpan.Length;
+      int lenRowDelimiter = _rowDelimiterSpan.Length;
+      int lenColDelimiter = _delimiterSpan.Length;
 
-      while ((bufferLength = reader.Read(buffer)) > 0)
+      while ((bufferLength = reader.Read(_buffer)) > 0)
       {
         start = 0;
         for (int i = 0; i < bufferLength; ++i)
         {
-          var current = buffer[i];
+          var current = _buffer[i];
           int rowBufferCurrentIndex = i - lenRowDelimiter + 1;
           int colBufferCurrentIndex = i - lenColDelimiter + 1;
-          char? rowBufferCurrent = overflowLength > 0 && rowBufferCurrentIndex < 0 ? overflow[overflowLength + rowBufferCurrentIndex] : null;
-          char? colBufferCurrent = overflowLength > 0 && colBufferCurrentIndex < 0 ? overflow[overflowLength + colBufferCurrentIndex] : null;
+          char? rowBufferCurrent = overflowLength > 0 && rowBufferCurrentIndex < 0 ? _overflow[overflowLength + rowBufferCurrentIndex] : null;
+          char? colBufferCurrent = overflowLength > 0 && colBufferCurrentIndex < 0 ? _overflow[overflowLength + colBufferCurrentIndex] : null;
 
           if (_wrapper == current)
           {
@@ -85,7 +82,7 @@ namespace Parser.Readers
             }
             else
             {
-              var next = buffer[i + 1];
+              var next = _buffer[i + 1];
               if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
                 inWrapper = false;
               else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
@@ -102,21 +99,22 @@ namespace Parser.Readers
             row >= _options.StartRow &&
             (
               (firstDelimiter == current && lenColDelimiter == 1)
-              || (firstDelimiter == current && delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter))
-              || (firstDelimiter == colBufferCurrent && delimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + colBufferCurrentIndex, Math.Abs(colBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenColDelimiter + colBufferCurrentIndex)), 0, lenColDelimiter))
+              || (firstDelimiter == current && _delimiterSpan.EqualsCharArray(_buffer, i, i + lenColDelimiter))
+              || (firstDelimiter == colBufferCurrent && _delimiterSpan.EqualsBetweenCharArray(_buffer, i, _overflow, colBufferCurrentIndex))
             )
           )
           {
             if (overflowLength > 0)
             {
-              AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
+              var merge = MergeBuffers(_overflow, overflowLength, _buffer, i);
+              AddColumn(merge, 0, i, hasWrapper, hasDoubleWrapper);
               overflowLength = 0;
               hasDoubleWrapper = false;
               hasWrapper = false;
             }
             else
             {
-              AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
+              AddColumn(_buffer, start, i, hasWrapper, hasDoubleWrapper);
               hasDoubleWrapper = false;
               hasWrapper = false;
             }
@@ -124,22 +122,23 @@ namespace Parser.Readers
           }
           else if (
             (firstRowDelimiter == current && lenRowDelimiter == 1)
-            || (firstRowDelimiter == current && rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter))
-            || (firstRowDelimiter == rowBufferCurrent && rowDelimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + rowBufferCurrentIndex, Math.Abs(rowBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenRowDelimiter + rowBufferCurrentIndex)), 0, lenRowDelimiter))
+            || (firstRowDelimiter == current && _rowDelimiterSpan.EqualsCharArray(_buffer, i, i + lenRowDelimiter))
+            || (firstRowDelimiter == rowBufferCurrent && _rowDelimiterSpan.EqualsBetweenCharArray(_buffer, i, _overflow, rowBufferCurrentIndex))
           )
           {
             if (row++ >= _options.StartRow)
             {
               if (overflowLength > 0)
               {
-                AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
+                var merge = MergeBuffers(_overflow, overflowLength, _buffer, i);
+                AddColumn(merge, 0, i, hasWrapper, hasDoubleWrapper);
                 overflowLength = 0;
                 hasDoubleWrapper = false;
                 hasWrapper = false;
               }
               else
               {
-                AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
+                AddColumn(_buffer, start, i, hasWrapper, hasDoubleWrapper);
                 hasDoubleWrapper = false;
                 hasWrapper = false;
               }
@@ -156,7 +155,7 @@ namespace Parser.Readers
 
         if (start < bufferLength)
         {
-          buffer.Slice(start, bufferLength - start).CopyTo(overflow);
+          _buffer.Slice(start, bufferLength - start).CopyTo(_overflow);
           overflowLength = bufferLength - start;
         }
       }
@@ -164,7 +163,7 @@ namespace Parser.Readers
       if (row++ >= _options.StartRow)
       {
         if (overflowLength > 0)
-          _processor.AddColumn(overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
+          _processor.AddColumn(_overflow, 0, overflowLength, hasWrapper, hasDoubleWrapper);
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
           yield return _processor.GetObject();
         _processor.ClearObject();
@@ -172,19 +171,22 @@ namespace Parser.Readers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumn(ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
+    private void AddColumn(in char[] buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
     {
       if (buffer == null) return;
-      _processor.AddColumn(buffer.Slice(start, i - start), hasWrapper, hasDoubleWrapper);
+      _processor.AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumnWithOverflow(ReadOnlySpan<char> overflow, ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
+    private char[] MergeBuffers(in char[] overflow, int overflowLength, in char[] buffer, int end)
     {
-      if (buffer == null)
-        _processor.AddColumn(overflow, hasWrapper, hasDoubleWrapper);
-      else
-        _processor.AddColumn(buffer.Slice(start, i - start), overflow, hasWrapper, hasDoubleWrapper);
+      var result = new char[overflowLength + end];
+      var index = 0;
+      for (var i = 0; i < overflowLength; ++i)
+        result[index++] = overflow[i];
+      for (var i = 0; i < end; ++i)
+        result[index++] = buffer[i];
+      return result;
     }
   }
 }

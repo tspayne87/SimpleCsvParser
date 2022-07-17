@@ -34,7 +34,7 @@ namespace SimpleCsvParser.Processors
 
 
     /// <inheritdoc />
-    public void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper)
+    public void AddColumn(in char[] str, int start, int end, bool hasWrapper, bool hasDoubleWrapper)
     {
       if (_result.Length < _colIndex + 1)
       {
@@ -42,21 +42,21 @@ namespace SimpleCsvParser.Processors
         _colCount = _colIndex + 1;
       }
 
-      if (str.Length > 0)
+      if (start != end)
       {
         if (hasDoubleWrapper)
         {
           if (hasWrapper)
-            _result[_colIndex++] = new string(str.Slice(1, str.Length - 2)).Clean(_doubleWrap, _singleWrap);
+            _result[_colIndex++] = new string(str, start + 1, end - start - 2).Clean(_doubleWrap, _singleWrap);
           else
-            _result[_colIndex++] = new string(str).Clean(_doubleWrap, _singleWrap);
+            _result[_colIndex++] = new string(str, start, end - start).Clean(_doubleWrap, _singleWrap);
         }
         else
         {
           if (hasWrapper)
-            _result[_colIndex++] = new string(str.Slice(1, str.Length - 2));
+            _result[_colIndex++] = new string(str, start + 1, end - start - 2);
           else
-            _result[_colIndex++] = new string(str);
+            _result[_colIndex++] = new string(str, start, end - start);
         }
         _isAColumnSet = true;
       }
@@ -64,12 +64,6 @@ namespace SimpleCsvParser.Processors
       {
         _result[_colIndex++] = string.Empty;
       }
-    }
-
-    /// <inheritdoc />
-    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper)
-    {
-      AddColumn(overflow.MergeSpan(str), hasWrapper, hasDoubleWrapper);
     }
 
     /// <inheritdoc />

@@ -17,14 +17,10 @@ namespace Parser.Performance
     public void SimpleCSVParserModel()
     {
       using var stream = File.OpenRead("PackageAssets.csv");
-      using (var reader = new CsvStreamModelReader<DataModel>(stream))
-      {
-        reader.LoadHeaders();
-        var ct = new CancellationTokenSource();
-        foreach(var item in reader.Parse())
-          if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
-            break;
-      }
+      using var reader = new CsvStreamModelReader<DataModel>(stream);
+      reader.LoadHeaders();
+      foreach(var item in reader.Parse())
+        ; // NOOP
     }
 
     [Benchmark]
@@ -32,10 +28,8 @@ namespace Parser.Performance
     {
       using var stream = File.OpenRead("PackageAssets.csv");
       using var reader = new CsvStreamReader(stream);
-      var ct = new CancellationTokenSource();
       foreach(var item in reader.Parse())
-        if (1 == 0) //if we didn't want to evaluate every row (breaks out of the loop)
-          break;
+        ; // NOOP
     }
 
     [Benchmark]
