@@ -4,8 +4,13 @@ namespace Parser.Watchers
   {
     public static IWatcher ToWatcher(this string str)
     {
-      if (string.IsNullOrEmpty(str)) return new EmptyWatcher();
-      return str.Length == 1 ? new CharWatcher(str[0]) : new SequenceWatcher(str);
+      switch (str.Length)
+      {
+        case 0: return new EmptyWatcher();
+        case 1: return new CharWatcher(str[0]);
+        case 2: return new DualWatcher(str);
+        default: throw new ArgumentException("");
+      }
     }
 
     public static IWatcher ToWatcher(this char? c)

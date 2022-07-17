@@ -23,8 +23,6 @@ namespace Parser.Readers
     private readonly char[] _delimiterSpan;
     private readonly char[] _rowDelimiterSpan;
 
-    
-
     public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
     {
       if (options.Wrapper != null && options.RowDelimiter.IndexOf(options.Wrapper.Value) > -1)

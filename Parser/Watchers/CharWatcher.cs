@@ -11,7 +11,7 @@ namespace Parser.Watchers
       _identifier = identifier;
     }
 
-    public int FindIndex(char current, int index, in char[] buffer, int bufferLength, in char[] overflow, int overflowLength)
+    public int FindIndex(char current)
     {
       return current == _identifier ? index : int.MinValue;
     }
