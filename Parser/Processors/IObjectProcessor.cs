@@ -9,8 +9,6 @@ namespace SimpleCsvParser.Processors
    {
      void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper);
 
-     void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper);
-
      bool IsEmpty();
 
      bool IsAColumnSet();

@@ -6,6 +6,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Collections.Generic;
+using Parser.Watchers;
 
 namespace Parser.Readers
 {
@@ -14,19 +15,11 @@ namespace Parser.Readers
     private Stream _stream;
     private IObjectProcessor<T> _processor;
     private ParseOptions _options;
-    private string _doubleWrap, _singleWrap;
-    private char _wrapper;
-
     private char[] _buffer;
     private char[] _overflow;
-    private readonly char[] _delimiterSpan;
-    private readonly char[] _rowDelimiterSpan;
-
-    private Span<char> buffer => _buffer;
-    private Span<char> overflow => _overflow;
-    private ReadOnlySpan<char> delimiterSpan => _delimiterSpan;
-    private ReadOnlySpan<char> rowDelimiterSpan => _rowDelimiterSpan;
-    
+    private readonly IWatcher _wrapperWatcher;
+    private readonly IWatcher _delimiterWatcher;
+    private readonly IWatcher _rowDelimiterWatcher;
 
     public PipelineReader(Stream stream, ParseOptions options, IObjectProcessor<T> processor)
     {
@@ -40,151 +33,141 @@ namespace Parser.Readers
       _stream = stream;
       _processor = processor;
       _options = options;
-      _wrapper = _options.Wrapper == null ? default : _options.Wrapper.Value;
-      _doubleWrap = $"{_wrapper}{_wrapper}";
-      _singleWrap = $"{_wrapper}";
       _buffer = new char[4 * 1024];
       _overflow = new char[1024];
-      _delimiterSpan = _options.Delimiter.ToCharArray();
-      _rowDelimiterSpan = _options.RowDelimiter.ToCharArray();
+
+      _wrapperWatcher = _options.Wrapper.ToWatcher();
+      _delimiterWatcher = _options.Delimiter.ToWatcher();
+      _rowDelimiterWatcher = _options.RowDelimiter.ToWatcher();
     }
 
     internal IEnumerable<T> Parse()
     {
+      /// Prime the stream and reader so we can start working
       _stream.Seek(0, SeekOrigin.Begin);
       using var reader = new StreamReader(_stream, Encoding.UTF8, true, 4 * 1024, true);
-      int bufferLength;                                                                                           // The current buffer length, the start of the column the end of the column
-      int start = 0;                                                                                              // The current starting position of the column
-      bool inWrapper = false;                                                                                     // If we are currently in a wrapper or not
-      char firstRowDelimiter = string.IsNullOrEmpty(_options.RowDelimiter) ? default : _options.RowDelimiter[0];  // Grab the first character from the row delimiter since it is much faster to check char to char
-      char firstDelimiter = string.IsNullOrEmpty(_options.Delimiter) ? default : _options.Delimiter[0];           // Grab the first character from the delimiter since it is much faster to check char to char
-      uint row = 0;                                                                                               // The current row we are working on
-      bool hasDoubleWrapper = false;
-      bool hasWrapper = false;
-      int overflowLength = 0;
-      int lenRowDelimiter = rowDelimiterSpan.Length;
-      int lenColDelimiter = delimiterSpan.Length;
 
-      while ((bufferLength = reader.Read(buffer)) > 0)
+      int bufferLength;                        // The current buffer length, the start of the column the end of the column
+      int start = 0;                           // The current starting position of the column
+      bool inWrapper = false;                  // If we are currently in a wrapper or not
+      uint row = 0;                            // The current row we are working on
+      bool hasDoubleWrapper = false;           // If we are working with a double wrapper
+      bool hasWrapper = false;                 // If we are working with just a wrapper
+      int overflowLength = 0;                  // The length over our overflow buffer
+      int watcherResult = 0;                   // The watcher result we want to check against
+      bool checkNextWrapper = false;           // If we should check for the next wrapper to determine if it is escaped or not
+      int startRow = _options.StartRow;        // Cached value since the git operation can get expensive since we call it so many times
+      bool hasOptionWrapper = _options.Wrapper != null;
+      bool hasOptionDelimiter = _options.Delimiter.Length > 0;
+
+      while ((bufferLength = reader.Read(_buffer)) > 0)
       {
         start = 0;
         for (int i = 0; i < bufferLength; ++i)
         {
-          var current = buffer[i];
-          int rowBufferCurrentIndex = i - lenRowDelimiter + 1;
-          int colBufferCurrentIndex = i - lenColDelimiter + 1;
-          char? rowBufferCurrent = overflowLength > 0 && rowBufferCurrentIndex < 0 ? overflow[overflowLength + rowBufferCurrentIndex] : null;
-          char? colBufferCurrent = overflowLength > 0 && colBufferCurrentIndex < 0 ? overflow[overflowLength + colBufferCurrentIndex] : null;
+          var current = _buffer[i];
 
-          if (_wrapper == current)
+          #region Wrapper Checks
+          if (hasOptionWrapper)
           {
-            if (!inWrapper)
+            watcherResult = _wrapperWatcher.FindIndex(current, i);
+            if (checkNextWrapper)
             {
-              inWrapper = true;
-              hasWrapper = true;
-            }
-            else
-            {
-              var next = buffer[i + 1];
-              if (inWrapper && (i + 1 >= bufferLength || next != _wrapper))
+              checkNextWrapper = false;
+              if (watcherResult == int.MinValue)
                 inWrapper = false;
-              else if (inWrapper && (i + 1 >= bufferLength || next == _wrapper))
-              {
-                i++;
+              else
                 hasDoubleWrapper = true;
-              }
             }
-          }
-          if (inWrapper)
-            continue;
-
-          if (
-            row >= _options.StartRow &&
-            (
-              (firstDelimiter == current && lenColDelimiter == 1)
-              || (firstDelimiter == current && delimiterSpan.EqualsCharSpan(buffer, i, i + lenColDelimiter))
-              || (firstDelimiter == colBufferCurrent && delimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + colBufferCurrentIndex, Math.Abs(colBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenColDelimiter + colBufferCurrentIndex)), 0, lenColDelimiter))
-            )
-          )
-          {
-            if (overflowLength > 0)
+            else if (watcherResult != int.MinValue)
             {
-              AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
-              overflowLength = 0;
-              hasDoubleWrapper = false;
-              hasWrapper = false;
-            }
-            else
-            {
-              AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
-              hasDoubleWrapper = false;
-              hasWrapper = false;
-            }
-            start = i + lenColDelimiter;
-          }
-          else if (
-            (firstRowDelimiter == current && lenRowDelimiter == 1)
-            || (firstRowDelimiter == current && rowDelimiterSpan.EqualsCharSpan(buffer, i, i + lenRowDelimiter))
-            || (firstRowDelimiter == rowBufferCurrent && rowDelimiterSpan.EqualsCharSpan(overflow.Slice(overflowLength + rowBufferCurrentIndex, Math.Abs(rowBufferCurrentIndex)).MergeSpan(buffer.Slice(0, lenRowDelimiter + rowBufferCurrentIndex)), 0, lenRowDelimiter))
-          )
-          {
-            if (row++ >= _options.StartRow)
-            {
-              if (overflowLength > 0)
+              if (!inWrapper)
               {
-                AddColumnWithOverflow(overflow.Slice(0, overflowLength), buffer, start, i, hasWrapper, hasDoubleWrapper);
-                overflowLength = 0;
-                hasDoubleWrapper = false;
-                hasWrapper = false;
+                inWrapper = true;
+                hasWrapper = true;
               }
               else
               {
-                AddColumn(buffer, start, i, hasWrapper, hasDoubleWrapper);
-                hasDoubleWrapper = false;
-                hasWrapper = false;
+                checkNextWrapper = true;
               }
+            }
+            if (inWrapper)
+              continue;
+          }
+          #endregion
+
+          #region Delimiter Checks
+          if (hasOptionDelimiter && row >= startRow && (watcherResult = _delimiterWatcher.FindIndex(current, i)) != int.MinValue)
+          {
+            if (watcherResult < 0)
+            {
+              _processor.AddColumn(_overflow.Slice(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
+              overflowLength = 0;
+            }
+            else if (overflowLength > 0)
+            {
+              _processor.AddColumn(_overflow.Slice(0, overflowLength).MergeSpan(_buffer.Slice(0, watcherResult)), hasWrapper, hasDoubleWrapper);
+              overflowLength = 0;
+            }
+            else
+            {
+              _processor.AddColumn(_buffer.Slice(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
+            }
+            hasDoubleWrapper = false;
+            hasWrapper = false;
+            start = i + 1;
+          }
+          #endregion
+
+          #region Row Delimiter Checks
+          else if ((watcherResult = _rowDelimiterWatcher.FindIndex(current, i)) != int.MinValue)
+          {
+            if (row++ >= startRow)
+            {
+              if (watcherResult < 0)
+              {
+                _processor.AddColumn(_overflow.Slice(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
+                overflowLength = 0;
+              }
+              else if (overflowLength > 0)
+              {
+                _processor.AddColumn(_overflow.Slice(0, overflowLength).MergeSpan(_buffer.Slice(0, watcherResult)), hasWrapper, hasDoubleWrapper);
+                overflowLength = 0;
+              }
+              else
+              {
+                _processor.AddColumn(_buffer.Slice(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
+              }
+
               if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
               {
                 yield return _processor.GetObject();
               }
               _processor.ClearObject();
             }
-            i += lenRowDelimiter - 1;
+
+            hasDoubleWrapper = false;
+            hasWrapper = false;
             start = i + 1;
           }
+          #endregion
         }
 
         if (start < bufferLength)
         {
-          buffer.Slice(start, bufferLength - start).CopyTo(overflow);
+          _buffer.Slice(start, bufferLength - start).CopyTo(_overflow);
           overflowLength = bufferLength - start;
         }
       }
 
-      if (row++ >= _options.StartRow)
+      if (row++ >= startRow)
       {
         if (overflowLength > 0)
-          _processor.AddColumn(overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
+          _processor.AddColumn(_overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
           yield return _processor.GetObject();
         _processor.ClearObject();
       }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumn(ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
-    {
-      if (buffer == null) return;
-      _processor.AddColumn(buffer.Slice(start, i - start), hasWrapper, hasDoubleWrapper);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AddColumnWithOverflow(ReadOnlySpan<char> overflow, ReadOnlySpan<char> buffer, int start, int i, bool hasWrapper, bool hasDoubleWrapper)
-    {
-      if (buffer == null)
-        _processor.AddColumn(overflow, hasWrapper, hasDoubleWrapper);
-      else
-        _processor.AddColumn(buffer.Slice(start, i - start), overflow, hasWrapper, hasDoubleWrapper);
     }
   }
 }

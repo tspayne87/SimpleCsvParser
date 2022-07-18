@@ -90,12 +90,6 @@ namespace SimpleCsvParser.Processors
     }
 
     /// <inheritdoc />
-    public void AddColumn(ReadOnlySpan<char> str, ReadOnlySpan<char> overflow, bool hasWrapper, bool hasDoubleWrapper)
-    {
-      AddColumn(overflow.MergeSpan(str), hasWrapper, hasDoubleWrapper);
-    }
-
-    /// <inheritdoc />
     public bool IsEmpty()
     {
       return _isNotSet;

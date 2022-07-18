@@ -6,10 +6,23 @@ namespace SimpleCsvParser
   internal static class StringExtensions
   {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool EqualsCharSpan(this ReadOnlySpan<char> str, ReadOnlySpan<char> buffer, int start, int end)
+    public static bool EqualsCharArray(this char[] str, in char[] buffer, int start, int end)
     {
       if (start < 0 || str.Length != end - start || end > buffer.Length) return false;
-      return str.SequenceEqual(buffer.Slice(start, end - start));
+      for (var i = 0; i < str.Length; ++i)
+        if (str[i] != buffer[start + i]) return false;
+      return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool EqualsBetweenCharArray(this char[] str, in char[] buffer, int end, in char[] overflow, int start)
+    {
+      var index = 0;
+      for (var i = start; i < overflow.Length; ++i)
+        if (str[index++] != overflow[i]) return false;
+      for (var i = 0; i < end; ++i)
+        if (str[index++] != buffer[i]) return false;
+      return true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -19,21 +32,9 @@ namespace SimpleCsvParser
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<char> MergeSpan(this Span<char> left, Span<char> right)
+    public static ReadOnlySpan<T> Slice<T>(this T[] arr, int start, int length)
     {
-      return MergeSpan((ReadOnlySpan<char>)left, (ReadOnlySpan<char>)right);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<char> MergeSpan(this ReadOnlySpan<char> left, Span<char> right)
-    {
-      return MergeSpan(left, (ReadOnlySpan<char>)right);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<char> MergeSpan(this Span<char> left, ReadOnlySpan<char> right)
-    {
-      return MergeSpan((ReadOnlySpan<char>)left, right);
+      return new ReadOnlySpan<T>(arr, start, length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -51,7 +52,18 @@ namespace SimpleCsvParser
       if (isNullable && str == "null") return null;
 
       if (isEnum) return Enum.Parse(type, new string(str));
-      if(type ==typeof(Guid)) return Guid.Parse(str);
+      if(type ==typeof(Guid))
+      {
+        try
+        {
+          return Guid.Parse(str);
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine(new string(str));
+          throw ex;
+        }
+      }
                 
       switch (typeCode)
       {

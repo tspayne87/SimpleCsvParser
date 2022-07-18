@@ -33,5 +33,37 @@ namespace SimpleCsvParser.Test
       foreach(var item in reader.Parse())
         ; // NOOP
     }
+
+    [TestMethod]
+    public void CheckDataLargeFile()
+    {
+      using var reader = new CsvStreamReader("ColumnsTest.csv", new CsvStreamReaderOptions());
+      var count = 0;
+      foreach(var item in reader.Parse())
+      {
+        count++;
+
+        for (var i = 0; i < item.Count; ++i)
+          Assert.AreEqual($"Column {i + 1}", item[i]);
+        Assert.AreEqual(item.Count, 200);
+      }
+      Assert.AreEqual(count, 15000);
+    }
+
+    [TestMethod]
+    public void EscapedLargeFile()
+    {
+      using var reader = new CsvStreamReader("EscapedLargeFile.csv", new CsvStreamReaderOptions() { EscapeChar = '"' });
+      var count = 0;
+      foreach(var item in reader.Parse())
+      {
+        count++;
+        foreach(var col in item)
+          Assert.IsFalse(col.Contains('"'));
+        Assert.AreEqual(item.Count, 200);
+      }
+
+      Assert.AreEqual(count, 15000);
+    }
   }
 }
