@@ -1,8 +1,9 @@
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Parser.Watchers
 {
-  internal class CharWatcher : IWatcher
+  internal struct CharWatcher : IWatcher
   {
     private char _identifier;
 
@@ -11,7 +12,7 @@ namespace Parser.Watchers
       _identifier = identifier;
     }
 
-    public int FindIndex(char current)
+    public int FindIndex(char current, int index)
     {
       return current == _identifier ? index : int.MinValue;
     }

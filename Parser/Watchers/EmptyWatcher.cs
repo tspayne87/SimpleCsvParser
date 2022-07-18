@@ -2,9 +2,9 @@ using System;
 
 namespace Parser.Watchers
 {
-  internal class EmptyWatcher : IWatcher
+  internal struct EmptyWatcher : IWatcher
   {
-    public int FindIndex(char current)
+    public int FindIndex(char current, int index)
     {
       return int.MinValue;
     }

@@ -74,15 +74,15 @@ namespace SimpleCsvParser.Processors
     }
 
     /// <inheritdoc />
-    public void AddColumn(in char[] str, int start, int end, bool hasWrapper, bool hasDoubleWrapper)
+    public void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper)
     {
       PropertyLookup item;
-      if (_props.Length > _index && (item = _props[_index]) != null && end - start > 0)
+      if (_props.Length > _index && (item = _props[_index]) != null && str.Length > 0)
       {
         if (hasWrapper)
-          item.Setter(_model, str.CastToValue(start + 1, end - start - 2, item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
+          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
         else
-          item.Setter(_model, str.CastToValue(start, end - start, item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
+          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
         _isNotSet = false;
       }
       _index++;

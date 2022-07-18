@@ -38,30 +38,50 @@ namespace SimpleCsvParser
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static object CastToValue(this char[] str, int start, int length, TypeCode typeCode, Type type, bool isNullable, bool isEnum, string doubleWrap, string singleWrap, bool hasDoubleWrapper)
+    public static ReadOnlySpan<char> MergeSpan(this ReadOnlySpan<char> left, ReadOnlySpan<char> right)
     {
-      if (isNullable && str.Slice(start, length).SequenceEqual("null")) return null;
+      Span<char> result = new Span<char>(new char[left.Length + right.Length]);
+      left.CopyTo(result);
+      right.CopyTo(result.Slice(left.Length, right.Length));
+      return result;
+    }
 
-      if (isEnum) return Enum.Parse(type, new string(str, start, length));
-      if(type ==typeof(Guid)) return Guid.Parse(str.Slice(start, length));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object CastToValue(this ReadOnlySpan<char> str, TypeCode typeCode, Type type, bool isNullable, bool isEnum, string doubleWrap, string singleWrap, bool hasDoubleWrapper)
+    {
+      if (isNullable && str == "null") return null;
+
+      if (isEnum) return Enum.Parse(type, new string(str));
+      if(type ==typeof(Guid))
+      {
+        try
+        {
+          return Guid.Parse(str);
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine(new string(str));
+          throw ex;
+        }
+      }
                 
       switch (typeCode)
       {
-        case TypeCode.String: return hasDoubleWrapper ? new string(str, start, length).Clean(doubleWrap, singleWrap) : new string(str, start, length);
-        case TypeCode.DateTime: return DateTime.Parse(str.Slice(start, length));
-        case TypeCode.Int16: return short.Parse(str.Slice(start, length));
-        case TypeCode.Int32: return int.Parse(str.Slice(start, length));
-        case TypeCode.Int64: return long.Parse(str.Slice(start, length));
-        case TypeCode.Char: return str[start];
-        case TypeCode.Boolean: return bool.Parse(str.Slice(start, length));
-        case TypeCode.Decimal: return decimal.Parse(str.Slice(start, length));
-        case TypeCode.Double: return double.Parse(str.Slice(start, length));
-        case TypeCode.Byte: return byte.Parse(str.Slice(start, length));
-        case TypeCode.SByte: return sbyte.Parse(str.Slice(start, length));
-        case TypeCode.Single: return Single.Parse(str.Slice(start, length));
-        case TypeCode.UInt16: return ushort.Parse(str.Slice(start, length));
-        case TypeCode.UInt32: return uint.Parse(str.Slice(start, length));
-        case TypeCode.UInt64: return ulong.Parse(str.Slice(start, length));
+        case TypeCode.String: return hasDoubleWrapper ? new string(str).Clean(doubleWrap, singleWrap) : new string(str);
+        case TypeCode.DateTime: return DateTime.Parse(str);
+        case TypeCode.Int16: return short.Parse(str);
+        case TypeCode.Int32: return int.Parse(str);
+        case TypeCode.Int64: return long.Parse(str);
+        case TypeCode.Char: return str[0];
+        case TypeCode.Boolean: return bool.Parse(str);
+        case TypeCode.Decimal: return decimal.Parse(str);
+        case TypeCode.Double: return double.Parse(str);
+        case TypeCode.Byte: return byte.Parse(str);
+        case TypeCode.SByte: return sbyte.Parse(str);
+        case TypeCode.Single: return Single.Parse(str);
+        case TypeCode.UInt16: return ushort.Parse(str);
+        case TypeCode.UInt32: return uint.Parse(str);
+        case TypeCode.UInt64: return ulong.Parse(str);
 
         case TypeCode.Empty:
         case TypeCode.Object:

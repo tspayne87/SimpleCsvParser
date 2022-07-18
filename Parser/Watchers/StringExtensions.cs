@@ -1,3 +1,5 @@
+using System;
+
 namespace Parser.Watchers
 {
   internal static class StringExtensions
@@ -9,7 +11,7 @@ namespace Parser.Watchers
         case 0: return new EmptyWatcher();
         case 1: return new CharWatcher(str[0]);
         case 2: return new DualWatcher(str);
-        default: throw new ArgumentException("");
+        default: throw new Exception("");
       }
     }
 

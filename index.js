@@ -16,12 +16,12 @@ function addLine(index, str) {
 
     var row = [];
     for (var j = 0; j < 200; ++j) {
-        row.push(str.length > 0 ? str + (j + 1) : '"' + generateString(Math.floor(Math.random() * 20) + 5) + '"');
+        row.push(true ? str + (j + 1) : '"' + generateString(Math.floor(Math.random() * 20) + 5) + '"');
     }
 
     fs.appendFile('test.csv', row.join(',') + '\r\n', function (err) {
         console.log(`Finished appending line ${index}`);
-        addLine(++index, '');
+        addLine(++index, str);
     });
 };
 
