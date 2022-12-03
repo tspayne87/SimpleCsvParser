@@ -34,8 +34,8 @@ namespace SimpleCsvParser.Test
     [TestMethod]
     public void TestRowStream()
     {
-      var stream = StreamHelper.GenerateStream("This is an example message\r\nThe Data follows this\r\nAnother Test String");
-      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { RemoveEmptyEntries = true });
+      var stream = StreamHelper.GenerateStream($"This is an example message\r\nThe Data follows this\r\nAnother Test String");
+      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { RemoveEmptyEntries = true, RowDelimiter = "\r\n" });
       var items = reader.Parse().ToList();
 
       Assert.AreEqual("This is an example message", items[0][0]);
@@ -47,7 +47,7 @@ namespace SimpleCsvParser.Test
     public void TestWithEmptyDelimiter()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { EscapeChar = null, ColumnDelimiter = string.Empty });
+      using var reader = new CsvStreamReader(stream, new CsvStreamReaderOptions() { EscapeChar = null, ColumnDelimiter = string.Empty, RowDelimiter = "\r\n" });
       new List<IList<string>>();
       var result = reader.Parse().ToList();
 
@@ -60,7 +60,7 @@ namespace SimpleCsvParser.Test
     public void TestWithNoWrapper()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { EscapeChar = null, HeaderWrapper = null, StartRow = 1 });
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { EscapeChar = null, HeaderWrapper = null, StartRow = 1, RowDelimiter = "\r\n" });
       reader.LoadHeaders();
       TestModel result = reader.Parse().FirstOrDefault();
 
@@ -75,7 +75,7 @@ namespace SimpleCsvParser.Test
     public void TestSkipHeaderAndData()
     {
       var stream = StreamHelper.GenerateStream("This is an example message\r\n \r\nname,type,cost,id,date\r\n \r\nThe Data follows this:\r\nClaws,Attachment,10,\"34.5\",03/27/1987");
-      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { StartRow = 5, HeaderStartRow = 2 });
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { StartRow = 5, HeaderStartRow = 2, RowDelimiter = "\r\n" });
       reader.LoadHeaders();
       TestModel result = reader.Parse().FirstOrDefault();
 
@@ -89,7 +89,7 @@ namespace SimpleCsvParser.Test
     [TestMethod]
     public void TestStringParser()
     {
-      using var reader = new CsvStreamModelReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamReaderWithHeaderOptions() { StartRow = 1 });
+      using var reader = new CsvStreamModelReader<TestModel>(StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,\"34.5\",03/27/1987"), new CsvStreamReaderWithHeaderOptions() { StartRow = 1, RowDelimiter = "\r\n" });
       reader.LoadHeaders();
       TestModel result = reader.Parse().FirstOrDefault();
 
