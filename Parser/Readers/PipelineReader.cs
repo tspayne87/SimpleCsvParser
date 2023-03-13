@@ -101,17 +101,17 @@ namespace Parser.Readers
           {
             if (watcherResult < 0)
             {
-              _processor.AddColumn(_overflow.Slice(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
+              _processor.AddColumn(_overflow.AsSpan(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
               overflowLength = 0;
             }
             else if (overflowLength > 0)
             {
-              _processor.AddColumn(_overflow.Slice(0, overflowLength).MergeSpan(_buffer.Slice(0, watcherResult)), hasWrapper, hasDoubleWrapper);
+              _processor.AddColumn(_overflow.AsSpan(0, overflowLength).MergeSpan(_buffer.AsSpan(0, watcherResult)), hasWrapper, hasDoubleWrapper);
               overflowLength = 0;
             }
             else
             {
-              _processor.AddColumn(_buffer.Slice(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
+              _processor.AddColumn(_buffer.AsSpan(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
             }
             hasDoubleWrapper = false;
             hasWrapper = false;
@@ -126,17 +126,17 @@ namespace Parser.Readers
             {
               if (watcherResult < 0)
               {
-                _processor.AddColumn(_overflow.Slice(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
+                _processor.AddColumn(_overflow.AsSpan(0, overflowLength + watcherResult), hasWrapper, hasDoubleWrapper);
                 overflowLength = 0;
               }
               else if (overflowLength > 0)
               {
-                _processor.AddColumn(_overflow.Slice(0, overflowLength).MergeSpan(_buffer.Slice(0, watcherResult)), hasWrapper, hasDoubleWrapper);
+                _processor.AddColumn(_overflow.AsSpan(0, overflowLength).MergeSpan(_buffer.AsSpan(0, watcherResult)), hasWrapper, hasDoubleWrapper);
                 overflowLength = 0;
               }
               else
               {
-                _processor.AddColumn(_buffer.Slice(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
+                _processor.AddColumn(_buffer.AsSpan(start, watcherResult - start), hasWrapper, hasDoubleWrapper);
               }
 
               if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
@@ -155,7 +155,7 @@ namespace Parser.Readers
 
         if (start < bufferLength)
         {
-          _buffer.Slice(start, bufferLength - start).CopyTo(_overflow);
+          _buffer.AsSpan(start, bufferLength - start).CopyTo(_overflow);
           overflowLength = bufferLength - start;
         }
       }
@@ -163,7 +163,7 @@ namespace Parser.Readers
       if (row++ >= startRow)
       {
         if (overflowLength > 0)
-          _processor.AddColumn(_overflow.Slice(0, overflowLength), hasWrapper, hasDoubleWrapper);
+          _processor.AddColumn(_overflow.AsSpan(0, overflowLength), hasWrapper, hasDoubleWrapper);
         if (_processor.IsAColumnSet() && !_options.RemoveEmptyEntries || !_processor.IsEmpty())
           yield return _processor.GetObject();
         _processor.ClearObject();
