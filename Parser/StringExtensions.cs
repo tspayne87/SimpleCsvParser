@@ -32,13 +32,7 @@ namespace SimpleCsvParser
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<T> Slice<T>(this T[] arr, int start, int length)
-    {
-      return new ReadOnlySpan<T>(arr, start, length);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<char> MergeSpan(this ReadOnlySpan<char> left, ReadOnlySpan<char> right)
+    public static ReadOnlySpan<char> MergeSpan(this Span<char> left, Span<char> right)
     {
       Span<char> result = new Span<char>(new char[left.Length + right.Length]);
       left.CopyTo(result);
