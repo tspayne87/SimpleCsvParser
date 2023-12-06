@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System;
-using System.Linq;
-using System.Text;
 
 namespace SimpleCsvParser.Processors
 {
@@ -18,6 +16,8 @@ namespace SimpleCsvParser.Processors
     /// Boolean to determine if a column has been set or not
     /// </summary>
     private bool _isAColumnSet = false;
+
+    private bool _isColumnsEmpty = true;
 
     private char _wrapper;
 
@@ -47,9 +47,9 @@ namespace SimpleCsvParser.Processors
         if (hasDoubleWrapper)
         {
           if (hasWrapper)
-            _result[_colIndex++] = new string(str.Slice(1, str.Length - 2)).Clean(_doubleWrap, _singleWrap);
+            _result[_colIndex++] = new string(str.Slice(1, str.Length - 2)).Replace(_doubleWrap, _singleWrap);
           else
-            _result[_colIndex++] = new string(str).Clean(_doubleWrap, _singleWrap);
+            _result[_colIndex++] = new string(str).Replace(_doubleWrap, _singleWrap);
         }
         else
         {
@@ -70,7 +70,7 @@ namespace SimpleCsvParser.Processors
     public bool IsEmpty()
     {
       for (int i = 0; i < _colIndex; i++)
-        if (!String.IsNullOrWhiteSpace(_result[i]))
+        if (!string.IsNullOrWhiteSpace(_result[i]))
           return false;
       return true;
     }

@@ -3,6 +3,7 @@ using System;
 using System.Reflection;
 using System.Linq;
 using System.Linq.Expressions;
+using Parser.Converters;
 
 namespace SimpleCsvParser.Processors
 {
@@ -37,8 +38,14 @@ namespace SimpleCsvParser.Processors
     /// </summary>
     private bool _isAColumnSet;
 
+    /// <summary>
+    /// The wrapper we are dealing with
+    /// </summary>
     private char _wrapper;
 
+    /// <summary>
+    /// The double and single wraps to cache it once and use it multiple times
+    /// </summary>
     private string _doubleWrap, _singleWrap;
 
     /// <summary>
@@ -68,7 +75,7 @@ namespace SimpleCsvParser.Processors
           if (index + 1 > _props.Length)
             Array.Resize(ref _props, index + 1);
           
-          _props[index] = new PropertyLookup(prop);
+          _props[index] = new PropertyLookup(prop, new DefaultConverter(prop));
         }
       }
     }
@@ -80,9 +87,9 @@ namespace SimpleCsvParser.Processors
       if (_props.Length > _index && (item = _props[_index]) != null && str.Length > 0)
       {
         if (hasWrapper)
-          item.Setter(_model, str.Slice(1, str.Length - 2).CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
+          item.Property.SetValue(_model, item.Converter.Convert(str.Slice(1, str.Length - 2), _doubleWrap, _singleWrap, hasDoubleWrapper));
         else
-          item.Setter(_model, str.CastToValue(item.PropertyTypeCode, item.PropertyType, item.IsNullable, item.IsEnum, _doubleWrap, _singleWrap, hasDoubleWrapper));
+          item.Property.SetValue(_model, item.Converter.Convert(str, _doubleWrap, _singleWrap, hasDoubleWrapper));
         _isNotSet = false;
       }
       _index++;
@@ -118,24 +125,13 @@ namespace SimpleCsvParser.Processors
 
     private class PropertyLookup
     {
-      public Action<TModel, object> Setter;
-      public TypeCode PropertyTypeCode;
-      public Type PropertyType;
-      public bool IsNullable, IsEnum;
+      public IPropertyConverter Converter;
+      public PropertyInfo Property;
       
-      public PropertyLookup(PropertyInfo p)
+      public PropertyLookup(PropertyInfo property, IPropertyConverter converter)
       {
-        IsNullable = p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Nullable<>);
-        PropertyType = IsNullable ? Nullable.GetUnderlyingType(p.PropertyType) : p.PropertyType;
-        PropertyTypeCode = Type.GetTypeCode(PropertyType);
-        IsEnum = PropertyType.IsEnum;
-
-        var prop = Expression.Parameter(typeof(TModel), "x");
-        var propObject = Expression.Parameter(typeof(object), "y");
-
-        var body = Expression.Assign(Expression.Property(prop, p), Expression.Convert(propObject, p.PropertyType));
-        var lambda = Expression.Lambda<Action<TModel, object>>(body, new[] { prop, propObject });
-        Setter = lambda.Compile();
+        Property = property;
+        Converter = converter;
       }
     }
   }

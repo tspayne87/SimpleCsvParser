@@ -3,10 +3,7 @@ using System.Text;
 using System.IO;
 using SimpleCsvParser.Processors;
 using System;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Collections.Generic;
-using Parser.Watchers;
 
 namespace Parser.Readers
 {
