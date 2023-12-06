@@ -57,6 +57,21 @@ namespace SimpleCsvParser.Test
     }
 
     [TestMethod]
+    public void TestWithEmptyData()
+    {
+      var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,,34.5,03/27/1987");
+      using var reader = new CsvStreamModelReader<TestModel>(stream, new CsvStreamReaderWithHeaderOptions() { StartRow = 1, RowDelimiter = "\r\n" });
+      reader.LoadHeaders();
+      TestModel result = reader.Parse().FirstOrDefault();
+
+      Assert.AreEqual("Claws", result.Name);
+      Assert.AreEqual(TestType.Attachment, result.Type);
+      Assert.IsNull(result.Cost);
+      Assert.AreEqual(34.5, result.Id);
+      Assert.AreEqual(DateTime.Parse("03/27/1987"), result.Date);
+    }
+
+    [TestMethod]
     public void TestWithNoWrapper()
     {
       var stream = StreamHelper.GenerateStream("name,type,cost,id,date\r\nClaws,Attachment,10,34.5,03/27/1987");

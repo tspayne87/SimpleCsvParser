@@ -36,6 +36,7 @@ namespace SimpleCsvParser.Processors
     /// <inheritdoc />
     public void AddColumn(ReadOnlySpan<char> str, bool hasWrapper, bool hasDoubleWrapper)
     {
+      _isAColumnSet = true;
       if (_result.Length < _colIndex + 1)
       {
         Array.Resize(ref _result, _colIndex + 1);
@@ -58,7 +59,6 @@ namespace SimpleCsvParser.Processors
           else
             _result[_colIndex++] = new string(str);
         }
-        _isAColumnSet = true;
       }
       else
       {

@@ -153,7 +153,7 @@ namespace Parser.Readers
           #endregion
         }
 
-        if (start < bufferLength)
+        if (row >= startRow && start < bufferLength)
         {
           _buffer.Slice(start, bufferLength - start).CopyTo(_overflow);
           overflowLength = bufferLength - start;

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30907.101
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parser", "Parser\Parser.csproj", "{38D06066-7E1B-464C-BE65-E97825271534}"
 EndProject
@@ -12,9 +12,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E040DB07-A9F5-4353-A0E8-457A2861A65F}"
 	ProjectSection(SolutionItems) = preProject
 		Parser.Net45\Parser.45.csproj = Parser.Net45\Parser.45.csproj
+		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parser.TestApp", "Parser.TestApp\Parser.TestApp.csproj", "{6986F976-D2CE-4C93-B7A6-EDDDBCD75C9C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Parser.TestApp", "Parser.TestApp\Parser.TestApp.csproj", "{6986F976-D2CE-4C93-B7A6-EDDDBCD75C9C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
